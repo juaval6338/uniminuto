@@ -3,7 +3,7 @@
 Libro para registrar la asistencia a las actividades de Bienestar. Se escribe la
 cédula o el ID del participante y el archivo trae sus datos desde las bases.
 
-- `libro/Registro_Asistencia_2026-1_V15.xlsx` — el libro listo para usar.
+- `libro/Registro_Asistencia_2026-1_V16.xlsx` — el libro listo para usar.
 - `herramientas/` — scripts que generan el libro y que leen el `.xlsb` original.
 
 ## Hojas

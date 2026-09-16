@@ -58,7 +58,7 @@ ANCHOS={'A':7,'B':11,'C':15,'D':10,'E':8,'F':34,'G':28,'H':31,'I':27,'J':13,'K':
         'M':27,'N':17,'O':9,'P':24,'Q':22,'R':22}
 for k,v in ANCHOS.items(): rg.column_dimensions[k].width=v
 rg.column_dimensions['A'].hidden=True                 # Q-Part oculta
-for i in range(20,50):                                # T..AW auxiliares
+for i in range(20,36):                                # T..AI auxiliares
     L=CL(i); rg.column_dimensions[L].width=12; rg.column_dimensions[L].hidden=True
 
 band(rg,'B1:R1','REGISTRO DE ASISTENCIA — BIENESTAR INSTITUCIONAL',AZUL,'FFFFFF',14)
@@ -67,65 +67,30 @@ rg.merge_cells('B2:R2')
 rg['B2']='Escriba la cédula o el ID en «Documento» y el archivo trae los datos del participante.'
 style(rg,'B2:R2',font=Fo(10,True,AZUL2),fill=Fi('E9EFF7'),align=Al('left'))
 
-# ---- buscador ----
-band(rg,'B4:G4','BUSCAR PARTICIPANTE POR NOMBRE',AZUL2,'FFFFFF',11)
-lbl(rg,'B5:C5','Escriba parte del nombre:')
-rg.merge_cells('D5:E5'); style(rg,'D5:E5',font=Fo(11,True,'7F6000'),fill=Fi(EDIT),align=Al('left'),border=BOX)
-
-lbl(rg,'B6:C6','Seleccione el nombre:')
-rg.merge_cells('D6:G6'); style(rg,'D6:G6',font=Fo(11,True,'7F6000'),fill=Fi(EDIT),align=Al('left'),border=BOX)
-dv(rg,'$AR$5:$AR$%d'%(4+SLOTS),['D6'])
-for r,t in ((7,'Documento:'),(8,'Sede y dependencia:'),(9,'Correo institucional:')):
-    lbl(rg,'B%d:C%d'%(r,r),t)
-    rg.merge_cells('D%d:G%d'%(r,r))
-    style(rg,'D%d:G%d'%(r,r),font=Fo(11,True,AZUL),fill=Fi(TOT),align=Al('left'),border=BOX)
-rg['AO5']='=IFERROR(INDEX($AN$5:$AN$%d,MATCH($D$6,$AM$5:$AM$%d,0)),"")'%(4+SHOW,4+SHOW)
-P5='$AO$5'
-rg['D7']='=IF({p}="","",IF($AK$3=1,INDEX(BD_EST_DOC,{p}),INDEX(BD_COL_CC,{p}))&"")'.format(p=P5)
-rg['D8']=('=IF({p}="","",IF($AK$3=1,INDEX(BD_EST_SEDE,{p}),INDEX(BD_COL_SEDE,{p}))&"   —   "&'
-          'IF($AK$3=1,INDEX(BD_EST_PROG,{p}),INDEX(BD_COL_PROG,{p})))').format(p=P5)
-rg['D9']='=IF({p}="","",IF($AK$3=1,INDEX(BD_EST_MAIL,{p}),INDEX(BD_COL_MAIL,{p}))&"")'.format(p=P5)
-E,C = 'BD_EST_NOM','BD_COL_NOM'
-for base,(cp,cd,cf,ci) in (('BD_EST_NOM',('AH','AI','AJ','AK')),
-                           ('BD_COL_NOM',('AM','AN','AO','AP'))):
-    doc = 'BD_EST_DOC' if base=='BD_EST_NOM' else 'BD_COL_CC'
-    for k in range(SLOTS):
-        r=5+k
-        if k==0:
-            rg['%s%d'%(cp,r)]=('=IF(TRIM($D$5&"")="","",IFERROR(MATCH("*"&TRIM($D$5)&"*",{b},0),""))'
-                               ).format(b=base)
-        else:
-            rg['%s%d'%(cp,r)]=('=IF(${p}{q}="","",IFERROR(${p}{q}+MATCH("*"&TRIM($D$5)&"*",'
-                               'INDEX({b},${p}{q}+1):INDEX({b},ROWS({b})),0),""))'
-                               ).format(p=cp,q=r-1,b=base)
-        rg['%s%d'%(cd,r)]='=IF(${p}{r}="","",INDEX({d},${p}{r})&"")'.format(p=cp,r=r,d=doc)
-        rg['%s%d'%(cf,r)]=('=IF(${d}{r}="","",IF(MATCH(${d}{r},${d}$5:${d}${e},0)=ROW()-4,1,0))'
-                           ).format(d=cd,r=r,e=4+SLOTS)
-        rg['%s%d'%(ci,r)]='=IF(${f}{r}=1,COUNTIF(${f}$5:${f}{r},1),"")'.format(f=cf,r=r)
-NE='MAX($AK$5:$AK$%d)'%(4+SLOTS)
-NC='MAX($AP$5:$AP$%d)'%(4+SLOTS)
-for k in range(SLOTS):
-    r=5+k
-    rg['AT%d'%r]=('=IF(ROWS($AT$5:AT{r})<={ne},1,IF(ROWS($AT$5:AT{r})<={ne}+{nc},2,""))'
-                  ).format(r=r,ne=NE,nc=NC)
-    rg['AS%d'%r]=('=IF($AT{r}="","",IF($AT{r}=1,'
-                  'INDEX($AH$5:$AH${e},MATCH(ROWS($AS$5:AS{r}),$AK$5:$AK${e},0)),'
-                  'INDEX($AM$5:$AM${e},MATCH(ROWS($AS$5:AS{r})-{ne},$AP$5:$AP${e},0))))'
-                  ).format(r=r,e=4+SLOTS,ne=NE)
-    rg['AR%d'%r]=('=IF($AS{r}="","",IF($AT{r}=1,INDEX(BD_EST_NOM,$AS{r}),INDEX(BD_COL_NOM,$AS{r}))'
-                  '&"   —   "&IF($AT{r}=1,INDEX(BD_EST_DOC,$AS{r}),INDEX(BD_COL_CC,$AS{r})))'
-                  ).format(r=r)
-rg['AU3']='=IFERROR(MATCH($D$6,$AR$5:$AR$%d,0),"")'%(4+SLOTS)
-rg['AV3']='=IF($AU$3="","",INDEX($AS$5:$AS$%d,$AU$3))'%(4+SLOTS)
-rg['AW3']='=IF($AU$3="","",INDEX($AT$5:$AT$%d,$AU$3))'%(4+SLOTS)
-rg.merge_cells('F5:G5')
-rg['F5']='=IF($AW$3="","",IF($AW$3=1,"Estudiante","Colaborador"))'
-style(rg,'F5:G5',font=Fo(10,True,AZUL),fill=Fi(TOT),align=Al('center'),border=BOX)
-P5='$AV$3'; B5='$AW$3'
-rg['D7']='=IF({p}="","",IF({b}=1,INDEX(BD_EST_DOC,{p}),INDEX(BD_COL_CC,{p}))&"")'.format(p=P5,b=B5)
-rg['D8']=('=IF({p}="","",IF({b}=1,INDEX(BD_EST_SEDE,{p}),INDEX(BD_COL_SEDE,{p}))&"   —   "&'
-          'IF({b}=1,INDEX(BD_EST_PROG,{p}),INDEX(BD_COL_PROG,{p})))').format(p=P5,b=B5)
-rg['D9']='=IF({p}="","",IF({b}=1,INDEX(BD_EST_MAIL,{p}),INDEX(BD_COL_MAIL,{p}))&"")'.format(p=P5,b=B5)
+# ---- buscador por nombre (como el archivo original: se elige de la lista) ----
+band(rg,'B4:I4','BUSCADOR DE DOCUMENTO POR NOMBRE',AZUL2,'FFFFFF',11)
+for ref,t in [('B5:B5','Tipo'),('C5:E5','Seleccione el nombre'),('F5:F5','DOCUMENTO (C.C.)'),
+              ('G5:G5','ID'),('H5:H5','SEDE'),('I5:I5','DEPENDENCIA')]:
+    a,b=ref.split(':')
+    if a!=b: rg.merge_cells(ref)
+    rg[a]=t
+style(rg,'B5:I5',font=Fo(10,True,'FFFFFF'),fill=Fi('4472C4'),align=Al('center','center',True),border=BOX)
+BUS=(('Estudiante',6,'BD_EST_NOM','BD_EST_DOC','BD_EST_ID','BD_EST_SEDE','BD_EST_PROG','LISTA_EST'),
+     ('Colaborador',7,'BD_COL_NOM','BD_COL_CC','BD_COL_ID','BD_COL_SEDE','BD_COL_PROG','LISTA_COL'))
+for et,r,nom,doc,idc,sede,prog,lista in BUS:
+    rg['B%d'%r]=et
+    rg.merge_cells('C%d:E%d'%(r,r))
+    style(rg,'B%d:B%d'%(r,r),font=Fo(10,True,AZUL),fill=Fi(TOT),align=Al('center'),border=BOX)
+    style(rg,'C%d:E%d'%(r,r),font=Fo(11,True,'7F6000'),fill=Fi(EDIT),align=Al('left'),border=BOX)
+    dv(rg,lista,['C%d'%r])
+    rg['T%d'%r]='=IFERROR(MATCH($C{r},{n},0),"")'.format(r=r,n=nom)
+    for col,rng in (('F',doc),('G',idc),('H',sede),('I',prog)):
+        rg['%s%d'%(col,r)]='=IF($T{r}="","",INDEX({g},$T{r})&"")'.format(r=r,g=rng)
+    style(rg,'F%d:I%d'%(r,r),font=Fo(11,True,AZUL),fill=Fi(TOT),align=Al('center'),border=BOX)
+    style(rg,'I%d:I%d'%(r,r),align=Al('left'))
+rg.merge_cells('B8:I8')
+rg['B8']='Elija el nombre en la lista y copie el documento a la columna «Documento» de la tabla.'
+style(rg,'B8:I8',font=Fo(9,False,'808080',True),align=Al('left'))
 
 # ---- resumen ----
 band(rg,'J4:P4','RESUMEN DE PARTICIPACIÓN',AZUL2,'FFFFFF',11)
@@ -184,7 +149,7 @@ style(rg,'A14:R14',font=Fo(10,True,'FFFFFF'),fill=Fi(AZUL2),align=Al('center','c
 style(rg,'M14:P14',fill=Fi('BF8F00'))
 style(rg,'B14:C14',fill=Fi('7F6000'))
 rg.row_dimensions[14].height=36
-for i in range(20,32):
+for i in range(20,36):
     rg.cell(row=14,column=i,value='auxiliar - no modificar').font=Fo(8,False,'A6A6A6',True)
 
 F0=FIRST+1                      # primera fila de datos = 15
@@ -501,6 +466,8 @@ NAMES={
  'BD_COL_CC':COL('B'),'BD_COL_ID':COL('C'),'BD_COL_NOM':COL('D'),'BD_COL_COD':COL('I'),
  'BD_COL_PROG':COL('K'),'BD_COL_MAIL':COL('L'),'BD_COL_MAIL2':COL('M'),'BD_COL_TEL':COL('N'),
  'BD_COL_SEDE':COL('P'),
+ 'LISTA_EST':"'BD EST'!$C$2:INDEX('BD EST'!$C:$C,MAX(2,COUNTA('BD EST'!$C:$C)))",
+ 'LISTA_COL':"'BD ADM-DOC'!$D$2:INDEX('BD ADM-DOC'!$D:$D,MAX(2,COUNTA('BD ADM-DOC'!$D:$D)))",
  'REG_QPART':RG('A'),'REG_SEDE':RG('E'),'REG_PROG':RG('G'),'REG_TIPO':RG('L'),'REG_PRIM':RG('X'),
  'REG_PROGEST':RG('AB'),'REG_IEST':RG('AC'),
  'REG_PROGPRO':RG('AE'),'REG_IPRO':RG('AF'),
@@ -509,11 +476,11 @@ NAMES={
 for n2,v2 in NAMES.items(): wb.defined_names.add(DefinedName(n2,attr_text=v2))
 wb.calculation.fullCalcOnLoad=True
 wb.properties.title='Registro de Asistencia'
-raw=SP+'/_v15_raw.xlsx'
+raw=SP+'/_v16_raw.xlsx'
 wb.save(raw)
 import sys; sys.path.insert(0,SP)
 from sharedstr import convert
-out=SP+'/Registro_Asistencia_2026-1_V15.xlsx'
+out=SP+'/Registro_Asistencia_2026-1_V16.xlsx'
 n,size=convert(raw,out)
 print('cadenas compartidas:',n,'| tamaño: %.1f MB'%(size/1048576))
 print('guardado:',out)
