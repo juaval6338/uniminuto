@@ -3,7 +3,7 @@
 Libro para registrar la asistencia a las actividades de Bienestar. Se escribe la
 cédula o el ID del participante y el archivo trae sus datos desde las bases.
 
-- `libro/Registro_Asistencia_2026-1_V12.xlsx` — el libro listo para usar.
+- `libro/Registro_Asistencia_2026-1_V13.xlsx` — el libro listo para usar.
 - `herramientas/` — scripts que generan el libro y que leen el `.xlsb` original.
 
 ## Hojas
@@ -35,7 +35,19 @@ Arriba hay dos bloques: el **buscador por nombre** (se escribe parte del nombre 
 se elige de una lista desplegable) y el **resumen de participación** con
 participantes, participaciones y porcentaje por tipo, con filtro de sede.
 
-## Correos y teléfonos
+## Colores
+
+| Color | Significado |
+|---|---|
+| Amarillo | lo escribe usted |
+| Blanco | lo calcula el archivo (no escribir) |
+| Naranja en Documento e ID | ese documento ya está registrado en otra fila |
+| Salmón en la fila | la persona no está en la base de datos |
+
+La columna `Q-Part` (el contador que alimenta el resumen) va oculta, igual que las
+columnas auxiliares T a AO.
+
+## Correos y teléfonos## Correos y teléfonos
 
 El correo que manda es el institucional (`@uniminuto.edu`). El correo adicional
 del estudiante sale de `C_ESTUDIANTE2`, tomando la parte anterior al `#`, y se
@@ -45,9 +57,20 @@ deja en blanco si coincide con el institucional. El teléfono principal es
 En `BD ADM-DOC` las columnas de correo adicional y teléfono están vacías en las
 1.585 filas, así que profesores y administrativos no traen esos datos.
 
-## Mantenimiento
+## Evaluación
+
+Las preguntas y la escala siguen el formato institucional **FR-BM-DFB-03,
+Versión 1, Enero 28 de 2021**: `E` Excelente (4), `N` Notable (3), `A` Aceptable (2),
+`N/M` Necesita Mejoramiento (1) y `N/A` No aplica, que no promedia.
+
+## Mantenimiento## Mantenimiento
 
 Las bases conservan las columnas del export original, así que se siguen
-actualizando pegando encima. Los rangos con nombre cubren 6.000 filas de
-colaboradores y 60.000 de estudiantes; si el export crece más, hay que ampliarlos
-en *Fórmulas → Administrador de nombres*.
+actualizando pegando encima: se pega bajo el encabezado de la fila 1 y todo lo
+demás se recalcula solo. Los rangos con nombre cubren **8.000 filas de
+colaboradores y 70.000 de estudiantes** (hoy hay 1.585 y 44.185), así que hay
+margen para varios periodos. Si algún export llega a superarlos, se amplían en
+*Fórmulas → Administrador de nombres*.
+
+El libro se guarda como `.xlsx`. Si se quiere el tamaño del `.xlsb` original,
+basta con *Archivo → Guardar como → Libro binario de Excel* dentro de Excel.
