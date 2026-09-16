@@ -14,9 +14,9 @@ from openpyxl.chart.shapes import GraphicalProperties
 from openpyxl.chart.data_source import AxDataSource, StrRef
 
 D=pickle.load(open(SP+'/data.pkl','rb'))
-FIRST,NROWS = 14,1000
+FIRST,NROWS = 14,2000
 LAST=FIRST+NROWS-1                      # 1013
-EST_LAST,COL_LAST = 70001,8001          # holgura para alimentar las bases
+
 EVA_FIRST,EVA_LAST = 11,310
 SEDES=['BUG','BVA','CHI','CIN','FLO','IPI','PAS','PER','QUI']
 TIPOS=['ESTUDIANTE','PROFESOR','ADMINISTRATIVO','EXTERNO']
@@ -58,7 +58,7 @@ ANCHOS={'A':7,'B':11,'C':15,'D':10,'E':8,'F':34,'G':28,'H':31,'I':27,'J':13,'K':
         'M':27,'N':17,'O':9,'P':24,'Q':22,'R':22}
 for k,v in ANCHOS.items(): rg.column_dimensions[k].width=v
 rg.column_dimensions['A'].hidden=True                 # Q-Part oculta
-for i in range(20,42):                                # T..AO auxiliares
+for i in range(20,45):                                # T..AR auxiliares
     L=CL(i); rg.column_dimensions[L].width=12; rg.column_dimensions[L].hidden=True
 
 band(rg,'B1:R1','REGISTRO DE ASISTENCIA — BIENESTAR INSTITUCIONAL',AZUL,'FFFFFF',14)
@@ -71,9 +71,11 @@ style(rg,'B2:R2',font=Fo(10,True,AZUL2),fill=Fi('E9EFF7'),align=Al('left'))
 band(rg,'B4:G4','BUSCAR PARTICIPANTE POR NOMBRE',AZUL2,'FFFFFF',11)
 lbl(rg,'B5:C5','Escriba parte del nombre:')
 rg.merge_cells('D5:E5'); style(rg,'D5:E5',font=Fo(11,True,'7F6000'),fill=Fi(EDIT),align=Al('left'),border=BOX)
-rg['F5']='Estudiantes'
-rg.merge_cells('F5:G5'); style(rg,'F5:G5',font=Fo(10,True,'7F6000'),fill=Fi(EDIT),align=Al('center'),border=BOX)
-dv(rg,'"Estudiantes,Colaboradores"',['F5'])
+rg.merge_cells('F5:G5')
+rg['F5']='=IF(TRIM($D$5&"")="","",IF($AK$3=1,"Estudiante","Colaborador"))'
+style(rg,'F5:G5',font=Fo(10,True,AZUL),fill=Fi(TOT),align=Al('center'),border=BOX)
+rg['AK3']=('=IF(TRIM($D$5&"")="","",IF(ISNUMBER(MATCH("*"&TRIM($D$5)&"*",BD_EST_NOM,0)),1,2))')
+
 lbl(rg,'B6:C6','Seleccione el nombre:')
 rg.merge_cells('D6:G6'); style(rg,'D6:G6',font=Fo(11,True,'7F6000'),fill=Fi(EDIT),align=Al('left'),border=BOX)
 dv(rg,'$AM$5:$AM$%d'%(4+SHOW),['D6'])
@@ -82,24 +84,33 @@ for r,t in ((7,'Documento:'),(8,'Sede y programa:'),(9,'Correo institucional:'))
     rg.merge_cells('D%d:G%d'%(r,r))
     style(rg,'D%d:G%d'%(r,r),font=Fo(11,True,AZUL),fill=Fi(TOT),align=Al('left'),border=BOX)
 rg['AO5']='=IFERROR(INDEX($AN$5:$AN$%d,MATCH($D$6,$AM$5:$AM$%d,0)),"")'%(4+SHOW,4+SHOW)
-rg['D7']='=IF($AO$5="","",INDEX(S_DOC,$AO$5)&"")'
-rg['D8']='=IF($AO$5="","",INDEX(S_SEDE,$AO$5)&"   —   "&INDEX(S_PROG,$AO$5))'
-rg['D9']='=IF($AO$5="","",INDEX(S_MAIL,$AO$5)&"")'
+P5='$AO$5'
+rg['D7']='=IF({p}="","",IF($AK$3=1,INDEX(BD_EST_DOC,{p}),INDEX(BD_COL_CC,{p}))&"")'.format(p=P5)
+rg['D8']=('=IF({p}="","",IF($AK$3=1,INDEX(BD_EST_SEDE,{p}),INDEX(BD_COL_SEDE,{p}))&"   —   "&'
+          'IF($AK$3=1,INDEX(BD_EST_PROG,{p}),INDEX(BD_COL_PROG,{p})))').format(p=P5)
+rg['D9']='=IF({p}="","",IF($AK$3=1,INDEX(BD_EST_MAIL,{p}),INDEX(BD_COL_MAIL,{p}))&"")'.format(p=P5)
+SN=lambda p:'IF($AK$3=1,INDEX(BD_EST_NOM,%s),INDEX(BD_COL_NOM,%s))'%(p,p)
+SD=lambda p:'IF($AK$3=1,INDEX(BD_EST_DOC,%s),INDEX(BD_COL_CC,%s))'%(p,p)
 for k in range(SLOTS):
     r=5+k
     if k==0:
-        rg['AH%d'%r]='=IF(TRIM($D$5&"")="","",IFERROR(MATCH("*"&TRIM($D$5)&"*",S_NOM,0),""))'
+        rg['AH%d'%r]=('=IF($AK$3="","",IFERROR(IF($AK$3=1,'
+                      'MATCH("*"&TRIM($D$5)&"*",BD_EST_NOM,0),'
+                      'MATCH("*"&TRIM($D$5)&"*",BD_COL_NOM,0)),""))')
     else:
-        rg['AH%d'%r]=('=IF($AH{p}="","",IFERROR($AH{p}+MATCH("*"&TRIM($D$5)&"*",'
-                      'INDEX(S_NOM,$AH{p}+1):INDEX(S_NOM,ROWS(S_NOM)),0),""))').format(p=r-1)
-    rg['AI%d'%r]='=IF($AH{r}="","",INDEX(S_DOC,$AH{r})&"")'.format(r=r)
+        rg['AH%d'%r]=('=IF($AH{p}="","",IFERROR($AH{p}+IF($AK$3=1,'
+                      'MATCH("*"&TRIM($D$5)&"*",INDEX(BD_EST_NOM,$AH{p}+1):'
+                      'INDEX(BD_EST_NOM,ROWS(BD_EST_NOM)),0),'
+                      'MATCH("*"&TRIM($D$5)&"*",INDEX(BD_COL_NOM,$AH{p}+1):'
+                      'INDEX(BD_COL_NOM,ROWS(BD_COL_NOM)),0)),""))').format(p=r-1)
+    rg['AI%d'%r]='=IF($AH{r}="","",{f}&"")'.format(r=r,f=SD('$AH%d'%r))
     rg['AJ%d'%r]='=IF($AI{r}="","",IF(MATCH($AI{r},$AI$5:$AI${e},0)=ROW()-4,1,0))'.format(r=r,e=4+SLOTS)
-    rg['AK%d'%r]='=IF($AJ{r}=1,COUNTIF($AJ$5:$AJ{r},1),"")'.format(r=r)
+    rg['AL%d'%r]='=IF($AJ{r}=1,COUNTIF($AJ$5:$AJ{r},1),"")'.format(r=r)
 for k in range(SHOW):
     r=5+k
-    rg['AN%d'%r]=('=IFERROR(INDEX($AH$5:$AH${e},MATCH(ROWS($AN$5:AN{r}),$AK$5:$AK${e},0)),"")'
+    rg['AN%d'%r]=('=IFERROR(INDEX($AH$5:$AH${e},MATCH(ROWS($AN$5:AN{r}),$AL$5:$AL${e},0)),"")'
                   ).format(r=r,e=4+SLOTS)
-    rg['AM%d'%r]='=IF($AN{r}="","",INDEX(S_NOM,$AN{r})&"   —   "&INDEX(S_DOC,$AN{r}))'.format(r=r)
+    rg['AM%d'%r]='=IF($AN{r}="","",{n}&"   —   "&{d})'.format(r=r,n=SN('$AN%d'%r),d=SD('$AN%d'%r))
 
 # ---- resumen ----
 band(rg,'J4:P4','RESUMEN DE PARTICIPACIÓN',AZUL2,'FFFFFF',11)
@@ -141,8 +152,8 @@ style(rg,'C12:C12',font=Fo(9,True,'7F6000'),fill=Fi(EDIT),align=Al('center'),bor
 rg['D12']='  lo calcula el archivo  '
 rg.merge_cells('D12:E12')
 style(rg,'D12:E12',font=Fo(9,True,'595959'),fill=Fi(AUTO),align=Al('center'),border=BOX)
-rg['F12']='  documento repetido  '
-style(rg,'F12:F12',font=Fo(9,True,'7F6000'),fill=Fi(REPE),align=Al('center'),border=BOX)
+rg['F12']='  ID repetido  '
+style(rg,'F12:F12',font=Fo(9,True,'0070C0'),fill=Fi(AUTO),align=Al('center'),border=BOX)
 rg['G12']='  no está en la base  '
 style(rg,'G12:G12',font=Fo(9,True,'843C0C'),fill=Fi(ALERTA),align=Al('center'),border=BOX)
 
@@ -205,11 +216,11 @@ for r in range(F0,L0+1):
     rg['AB%d'%r]=('=IF($AA{r}="","",IF(MATCH($AA{r},$AA${f}:$AA${l},0)=ROW()-{o},$AA{r},""))'
                   ).format(r=r,f=F0,l=L0,o=F0-1)
     rg['AC%d'%r]='=IF($AB{r}="","",COUNTIF($AB${f}:$AB{r},"?*"))'.format(r=r,f=F0)
-    rg['AD%d'%r]=('=IF(AND(OR($L{r}="PROFESOR",$L{r}="ADMINISTRATIVO"),$G{r}<>""),$G{r}&"","")'
-                  ).format(r=r)
-    rg['AE%d'%r]=('=IF($AD{r}="","",IF(MATCH($AD{r},$AD${f}:$AD${l},0)=ROW()-{o},$AD{r},""))'
-                  ).format(r=r,f=F0,l=L0,o=F0-1)
-    rg['AF%d'%r]='=IF($AE{r}="","",COUNTIF($AE${f}:$AE{r},"?*"))'.format(r=r,f=F0)
+    for tp,(kc,pc,ic) in (('PROFESOR',('AD','AE','AF')),('ADMINISTRATIVO',('AG','AH','AI'))):
+        rg['%s%d'%(kc,r)]='=IF(AND($L{r}="{t}",$G{r}<>""),$G{r}&"","")'.format(r=r,t=tp)
+        rg['%s%d'%(pc,r)]=('=IF(${k}{r}="","",IF(MATCH(${k}{r},${k}${f}:${k}${l},0)=ROW()-{o},${k}{r},""))'
+                           ).format(r=r,k=kc,f=F0,l=L0,o=F0-1)
+        rg['%s%d'%(ic,r)]='=IF(${p}{r}="","",COUNTIF(${p}${f}:${p}{r},"?*"))'.format(r=r,p=pc,f=F0)
 
 f_auto=Fo(10); f_in=Fo(10,False,'7F6000')
 AUTOCOLS='ADEFGHIJKL'; EDITCOLS=('B','C','M','N','O','P','Q','R')
@@ -242,8 +253,8 @@ dv(rg,'"%s"'%','.join(SEDES),['O%d:O%d'%(F0,L0)])
 v=dv(rg,'DATE(2015,1,1)',['B%d:B%d'%(F0,L0)],tipo='date',operator='greaterThan')
 v.errorStyle='warning'; v.showErrorMessage=True
 # documento repetido -> se resalta el ID
-rg.conditional_formatting.add('C%d:D%d'%(F0,L0),
-    FormulaRule(formula=['$Y%d=1'%F0],fill=Fi(REPE),font=Font(bold=True,color='7F6000'),stopIfTrue=True))
+rg.conditional_formatting.add('D%d:D%d'%(F0,L0),
+    FormulaRule(formula=['$Y%d=1'%F0],font=Font(bold=True,color='FF0070C0'),stopIfTrue=True))
 rg.conditional_formatting.add('B%d:L%d'%(F0,L0),
     FormulaRule(formula=['$F%d="INEXISTENTE"'%F0],fill=Fi(ALERTA),stopIfTrue=False))
 rg.freeze_panes='D15'
@@ -252,55 +263,55 @@ rg.auto_filter.ref='B14:R%d'%L0
 # ====================== RESULTADOS POR PROGRAMA ======================
 rp=wb.create_sheet('Resultados por programa'); rp.sheet_properties.tabColor='FF'+AZUL2
 rp.sheet_view.showGridLines=False
-for k,v in {'A':2,'B':42,'C':16,'D':16,'E':12}.items(): rp.column_dimensions[k].width=v
-for i in range(7,16):
+for k,v in {'A':2,'B':34,'C':14,'D':15,'E':3,'F':30,'G':14,'H':15,'I':3,'J':30,'K':14,'L':15}.items():
+    rp.column_dimensions[k].width=v
+for i in range(14,27):
     L=CL(i); rp.column_dimensions[L].width=12; rp.column_dimensions[L].hidden=True
-band(rp,'B1:E1','PARTICIPACIÓN POR PROGRAMA Y ÁREA',AZUL,'FFFFFF',14)
+band(rp,'B1:L1','PARTICIPACIÓN POR PROGRAMA Y ÁREA',AZUL,'FFFFFF',14)
 rp.row_dimensions[1].height=26
 lbl(rp,'B3:B3','Sede:')
 rp['C3']="=Registros!$L$5"
 style(rp,'C3:C3',font=Fo(12,True,AZUL),fill=Fi(TOT),align=Al('center'),border=BOX)
-rp.merge_cells('D3:E3'); rp['D3']='(el filtro se cambia en la hoja Registros)'
-style(rp,'D3:E3',font=Fo(9,False,'808080',True),align=Al('left'))
-NP=40
-def bloque_prog(top,titulo,encab,pn,ix,tipos,aux):
-    ap,ac,ak,ao=aux
-    band(rp,'B%d:E%d'%(top,top),titulo,AZUL2,'FFFFFF',11)
-    for j,t in enumerate([encab,'Participantes','Participaciones','% del total']):
-        rp.cell(row=top+1,column=2+j,value=t)
-    style(rp,'B%d:E%d'%(top+1,top+1),font=Fo(10,True,'FFFFFF'),fill=Fi('4472C4'),
+rp.merge_cells('D3:F3'); rp['D3']='(el filtro se cambia en la hoja Registros)'
+style(rp,'D3:F3',font=Fo(9,False,'808080',True),align=Al('left'))
+
+TOP,NP = 5,40                      # banda en 5, encabezados en 6, datos 7..46, total 47
+H0,H1 = TOP+2, TOP+1+NP
+RTOT = H1+1
+def bloque(cini,titulo,encab,tipo,pn,ix,aux):
+    c0,c1,c2 = CL(cini),CL(cini+1),CL(cini+2)
+    ap,ac,ak,ao = aux
+    band(rp,'%s%d:%s%d'%(c0,TOP,c2,TOP),titulo,AZUL2,'FFFFFF',11,'center')
+    for j,t in enumerate([encab,'Participantes','Participaciones']):
+        rp.cell(row=TOP+1,column=cini+j,value=t)
+    style(rp,'%s%d:%s%d'%(c0,TOP+1,c2,TOP+1),font=Fo(10,True,'FFFFFF'),fill=Fi('4472C4'),
           align=Al('center','center',True),border=BOX)
-    h0,h1=top+2,top+1+NP
-    cnt=lambda crit,ref:' + '.join(
-        ('IF($C$3="TODAS",COUNTIFS({c},1,REG_TIPO,"{t}",REG_PROG,{r}),'
-         'COUNTIFS({c},1,REG_TIPO,"{t}",REG_PROG,{r},REG_SEDE,$C$3))').format(c=crit,t=t,r=ref)
-        for t in tipos)
+    cnt=lambda crit,ref:('IF($C$3="TODAS",COUNTIFS({c},1,REG_TIPO,"{t}",REG_PROG,{r}),'
+                         'COUNTIFS({c},1,REG_TIPO,"{t}",REG_PROG,{r},REG_SEDE,$C$3))'
+                         ).format(c=crit,t=tipo,r=ref)
     for k in range(NP):
-        r=h0+k
+        r=H0+k
         rp['%s%d'%(ap,r)]=('=IFERROR(INDEX({pn},MATCH(ROWS(${a}${h}:{a}{r}),{ix},0))&"","")'
-                           ).format(pn=pn,ix=ix,a=ap,h=h0,r=r)
+                           ).format(pn=pn,ix=ix,a=ap,h=H0,r=r)
         rp['%s%d'%(ac,r)]='=IF(${a}{r}="","",{f})'.format(a=ap,r=r,f=cnt('REG_PRIM','$%s%d'%(ap,r)))
         rp['%s%d'%(ak,r)]='=IF(${a}{r}="","",${c}{r}*10000+(10000-ROW()))'.format(a=ap,c=ac,r=r)
         rp['%s%d'%(ao,r)]=('=IFERROR(MATCH(LARGE(${k}${h}:${k}${e},ROWS(${o}${h}:{o}{r})),'
-                           '${k}${h}:${k}${e},0),"")').format(k=ak,o=ao,h=h0,e=h1,r=r)
-        rp['B%d'%r]='=IF(${o}{r}="","",INDEX(${a}${h}:${a}${e},${o}{r})&"")'.format(o=ao,a=ap,h=h0,e=h1,r=r)
-        rp['C%d'%r]='=IF(${o}{r}="","",INDEX(${c}${h}:${c}${e},${o}{r}))'.format(o=ao,c=ac,h=h0,e=h1,r=r)
-        rp['D%d'%r]='=IF($B{r}="","",{f})'.format(r=r,f=cnt('REG_QPART','$B%d'%r))
-        rp['E%d'%r]='=IFERROR($C{r}/$C${t},"")'.format(r=r,t=h1+1)
-    rtot=h1+1
-    rp['B%d'%rtot]='TOTAL'
-    rp['C%d'%rtot]='=SUM(C%d:C%d)'%(h0,h1); rp['D%d'%rtot]='=SUM(D%d:D%d)'%(h0,h1)
-    rp['E%d'%rtot]='=IF($C$%d=0,"",SUM(E%d:E%d))'%(rtot,h0,h1)
-    style(rp,'B%d:E%d'%(h0,h1),font=Fo(10),fill=Fi(AUTO),align=Al('center'),border=BOX)
-    style(rp,'B%d:B%d'%(h0,h1),align=Al('left'))
-    style(rp,'B%d:E%d'%(rtot,rtot),font=Fo(10,True),fill=Fi(TOT),align=Al('center'),border=BOX)
-    style(rp,'B%d:B%d'%(rtot,rtot),align=Al('left'))
-    style(rp,'C%d:D%d'%(h0,rtot),fmt='#,##0'); style(rp,'E%d:E%d'%(h0,rtot),fmt='0.0%')
-    return rtot
-fin1=bloque_prog(5,'PROGRAMAS ACADÉMICOS  —  estudiantes','Programa académico',
-                 'REG_PROGEST','REG_IEST',['ESTUDIANTE'],('G','H','I','J'))
-bloque_prog(fin1+3,'ÁREAS Y DEPENDENCIAS  —  profesores y administrativos','Área / dependencia',
-            'REG_PROGCOL','REG_ICOL',['PROFESOR','ADMINISTRATIVO'],('K','L','M','N'))
+                           '${k}${h}:${k}${e},0),"")').format(k=ak,o=ao,h=H0,e=H1,r=r)
+        rp['%s%d'%(c0,r)]='=IF(${o}{r}="","",INDEX(${a}${h}:${a}${e},${o}{r})&"")'.format(o=ao,a=ap,h=H0,e=H1,r=r)
+        rp['%s%d'%(c1,r)]='=IF(${o}{r}="","",INDEX(${c}${h}:${c}${e},${o}{r}))'.format(o=ao,c=ac,h=H0,e=H1,r=r)
+        rp['%s%d'%(c2,r)]='=IF(${c0}{r}="","",{f})'.format(c0=c0,r=r,f=cnt('REG_QPART','$%s%d'%(c0,r)))
+    rp['%s%d'%(c0,RTOT)]='TOTAL'
+    rp['%s%d'%(c1,RTOT)]='=SUM(%s%d:%s%d)'%(c1,H0,c1,H1)
+    rp['%s%d'%(c2,RTOT)]='=SUM(%s%d:%s%d)'%(c2,H0,c2,H1)
+    style(rp,'%s%d:%s%d'%(c0,H0,c2,H1),font=Fo(10),fill=Fi(AUTO),align=Al('center'),border=BOX)
+    style(rp,'%s%d:%s%d'%(c0,H0,c0,H1),align=Al('left'))
+    style(rp,'%s%d:%s%d'%(c0,RTOT,c2,RTOT),font=Fo(10,True),fill=Fi(TOT),align=Al('center'),border=BOX)
+    style(rp,'%s%d:%s%d'%(c0,RTOT,c0,RTOT),align=Al('left'))
+    style(rp,'%s%d:%s%d'%(c1,H0,c2,RTOT),fmt='#,##0')
+
+bloque(2,'ESTUDIANTES','Programa académico','ESTUDIANTE','REG_PROGEST','REG_IEST',('N','O','P','Q'))
+bloque(6,'PROFESORES','Área / dependencia','PROFESOR','REG_PROGPRO','REG_IPRO',('R','S','T','U'))
+bloque(10,'ADMINISTRATIVOS','Área / dependencia','ADMINISTRATIVO','REG_PROGADM','REG_IADM',('V','W','X','Y'))
 rp.freeze_panes='A7'
 
 # ============================ EVALUACIÓN ============================
@@ -374,15 +385,16 @@ ev.row_dimensions[11].height=48
 ev.merge_cells('B9:K9')
 ev['B9']='Ingrese aquí los resultados de las evaluaciones (puede copiar y pegar)'
 style(ev,'B9:K9',font=Fo(10,True,'7F6000'),fill=Fi(EDIT),align=Al('left'))
-CODES='{"0","1","2","3","4","N/A","NA","N/M","NM","A","N","E"}'
+U='UPPER(TRIM(${s}{r}&""))'
 for r in range(EVA_FIRST+1,EVA_LAST+2):
     ev['N%d'%r]=r-EVA_FIRST
-    for s,d in zip(ENT,ESP):
-        ev['%s%d'%(d,r)]=('=IFERROR(IF(TRIM(${s}{r}&"")="","",'
-            'IF(ISNUMBER(--TRIM(${s}{r}&"")),'
-            'IF(AND(--TRIM(${s}{r}&"")>=0,--TRIM(${s}{r}&"")<=4),--TRIM(${s}{r}&""),"-"),'
-            'CHOOSE(MATCH(UPPER(TRIM(${s}{r}&"")),{{"N/A","NA","N/M","NM","A","N","E"}},0),'
-            '0,0,1,1,2,3,4))),"-")').format(s=s,r=r)
+    for s_,d in zip(ENT,ESP):
+        u=U.format(s=s_,r=r); t='TRIM(${s}{r}&"")'.format(s=s_,r=r)
+        ev['%s%d'%(d,r)]=(
+            '=IF({t}="","",IFERROR(IF(AND(VALUE({t})>=0,VALUE({t})<=4),VALUE({t}),"-"),'
+            'IF({u}="E",4,IF({u}="N",3,IF({u}="A",2,'
+            'IF(OR({u}="N/M",{u}="NM"),1,IF(OR({u}="N/A",{u}="NA"),0,"-")))))))'
+        ).format(t=t,u=u)
 style(ev,'B%d:K%d'%(EVA_FIRST+1,EVA_LAST+1),font=Fo(11),fill=Fi(EDIT),align=Al('center'),border=BOX)
 style(ev,'N%d:N%d'%(EVA_FIRST+1,EVA_LAST+1),font=Fo(9),fill=Fi(TOT),align=Al('center'),border=BOX)
 style(ev,'P%d:AA%d'%(EVA_FIRST+1,EVA_LAST+1),font=Fo(9),fill=Fi(AUTO),align=Al('center'),border=BOX)
@@ -397,10 +409,11 @@ vev=dv(ev,'"E,N,A,N/M,N/A,4,3,2,1,0"',['B%d:K%d'%(EVA_FIRST+1,EVA_LAST+1)])
 vev.errorStyle='warning'; vev.showErrorMessage=True
 vev.promptTitle='Calificación'; vev.showInputMessage=True
 vev.prompt='E=4  N=3  A=2  N/M=1  N/A=0. También puede pegar números.'
-ev.conditional_formatting.add('B%d:K%d'%(EVA_FIRST+1,EVA_LAST+1),
-    FormulaRule(formula=['AND(TRIM(B%d&"")<>"",ISERROR(MATCH(UPPER(TRIM(B%d&"")),%s,0)))'
-                         %(EVA_FIRST+1,EVA_FIRST+1,CODES)],
-                fill=Fi('FFC7CE'),font=Font(color='9C0006',bold=True),stopIfTrue=False))
+# una regla por columna: se marca en rojo lo que la tabla espejo no pudo convertir
+for s_,d in zip(ENT,ESP):
+    ev.conditional_formatting.add('{s}{f}:{s}{l}'.format(s=s_,f=EVA_FIRST+1,l=EVA_LAST+1),
+        FormulaRule(formula=['${d}{f}="-"'.format(d=d,f=EVA_FIRST+1)],
+                    fill=Fi('FFC7CE'),font=Font(color='FF9C0006',bold=True),stopIfTrue=True))
 ev.freeze_panes='B12'
 
 # ====================== GRÁFICOS EVALUACIÓN ======================
@@ -462,8 +475,9 @@ base('BD ADM-DOC',D['adm'],'colaboradores')
 base('BD EST',D['est'],'estudiantes')
 
 # ========================= NOMBRES DEFINIDOS =========================
-EST=lambda c:"'BD EST'!${c}$2:${c}${n}".format(c=c,n=EST_LAST)
-COL=lambda c:"'BD ADM-DOC'!${c}$2:${c}${n}".format(c=c,n=COL_LAST)
+# columnas completas: la base puede crecer sin tocar nada
+EST=lambda c:"'BD EST'!${c}:${c}".format(c=c)
+COL=lambda c:"'BD ADM-DOC'!${c}:${c}".format(c=c)
 RG =lambda c:"Registros!${c}${f}:${c}${l}".format(c=c,f=F0,l=L0)
 NAMES={
  'BD_EST_ID':EST('B'),'BD_EST_NOM':EST('C'),'BD_EST_SEDE':EST('G'),'BD_EST_PROG':EST('K'),
@@ -474,14 +488,17 @@ NAMES={
  'BD_COL_SEDE':COL('P'),
  'REG_QPART':RG('A'),'REG_SEDE':RG('E'),'REG_PROG':RG('G'),'REG_TIPO':RG('L'),'REG_PRIM':RG('X'),
  'REG_PROGEST':RG('AB'),'REG_IEST':RG('AC'),
- 'REG_PROGCOL':RG('AE'),'REG_ICOL':RG('AF'),
- 'S_NOM':'CHOOSE(IF(Registros!$F$5="Colaboradores",2,1),BD_EST_NOM,BD_COL_NOM)',
- 'S_DOC':'CHOOSE(IF(Registros!$F$5="Colaboradores",2,1),BD_EST_DOC,BD_COL_CC)',
- 'S_SEDE':'CHOOSE(IF(Registros!$F$5="Colaboradores",2,1),BD_EST_SEDE,BD_COL_SEDE)',
- 'S_PROG':'CHOOSE(IF(Registros!$F$5="Colaboradores",2,1),BD_EST_PROG,BD_COL_PROG)',
- 'S_MAIL':'CHOOSE(IF(Registros!$F$5="Colaboradores",2,1),BD_EST_MAIL,BD_COL_MAIL)'}
+ 'REG_PROGPRO':RG('AE'),'REG_IPRO':RG('AF'),
+ 'REG_PROGADM':RG('AH'),'REG_IADM':RG('AI'),
+}
 for n2,v2 in NAMES.items(): wb.defined_names.add(DefinedName(n2,attr_text=v2))
 wb.calculation.fullCalcOnLoad=True
 wb.properties.title='Registro de Asistencia'
-out=SP+'/_v13_raw.xlsx'
-wb.save(out); print('guardado bruto:',out)
+raw=SP+'/_v14_raw.xlsx'
+wb.save(raw)
+import sys; sys.path.insert(0,SP)
+from sharedstr import convert
+out=SP+'/Registro_Asistencia_2026-1_V14.xlsx'
+n,size=convert(raw,out)
+print('cadenas compartidas:',n,'| tamaño: %.1f MB'%(size/1048576))
+print('guardado:',out)
