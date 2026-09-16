@@ -1,49 +1,53 @@
-# Registro de Asistencia — UNIMINUTO
+# Registro de Asistencia — Bienestar Institucional (UNIMINUTO)
 
-Libro de registro de asistencia simplificado (versión 11), reconstruido a partir de
-`Registro_Asistencia_2000_2026-1_V9.0.1.xlsb`.
+Libro para registrar la asistencia a las actividades de Bienestar. Se escribe la
+cédula o el ID del participante y el archivo trae sus datos desde las bases.
 
-## Contenido
+- `libro/Registro_Asistencia_2026-1_V12.xlsx` — el libro listo para usar.
+- `herramientas/` — scripts que generan el libro y que leen el `.xlsb` original.
 
-- `libro/Registro_Asistencia_2026-1_V11.xlsx` — el libro listo para usar.
-- `herramientas/` — scripts con los que se generó el libro y con los que se leyó
-  el archivo `.xlsb` original (Python + openpyxl).
+## Hojas
 
-## Qué cambió frente a la versión 9
+| Hoja | Para qué |
+|---|---|
+| `Registros` | Registro diario, buscador por nombre y resumen de participación |
+| `Resultados por programa` | Cuántos participaron por programa académico y por área |
+| `Evaluación` | Captura de las encuestas de evaluación |
+| `Gráficos Evaluación` | Tabla y gráfica de los resultados de la encuesta |
+| `BD ADM-DOC` / `BD EST` | Bases de datos (se actualizan pegando el export encima) |
 
-**Hoja `Registros`** — una sola tabla, sin cuadros auxiliares.
-- Los datos empiezan en la fila 6 (antes en la 19) y las columnas son doce:
-  Q-Part, Fecha, Documento, Sede, Nombre, Programa, Correo, Teléfono, Tipo,
-  Correo manual, Actividad y Observaciones.
-- Se escribe la cédula o el ID en **Documento** y el resto aparece solo.
-- Si la persona no está en la base, el nombre dice **Inexistente** y la fila se
-  pinta de naranja. En ese caso se escribe el correo en la columna J y aparece
-  en **Correo electrónico**.
-- Buscador de una línea en la fila 3: se escribe parte del nombre y devuelve el
-  documento y el nombre completo. Busca primero en estudiantes y luego en
-  colaboradores.
+## Hoja Registros
 
-**Hoja `Resultados por tipo`**
-- Solo las dos tablas (Participantes y Participaciones, con cantidad y
-  porcentaje) y el filtro de sede. Se eliminó el bloque auxiliar de unas
-  60.000 fórmulas.
+La tabla empieza en la fila 13 (encabezados) y tiene tres zonas:
 
-**Hoja `Resultados por programa`**
-- Mismo diseño de tres bloques, alimentado directamente desde `Registros`.
+- **A – K, automáticas.** Documento, SEDE, APELLIDOS Y NOMBRES, PROGRAMA / ÁREA,
+  CORREO INSTITUCIONAL, CORREO ADICIONAL, TELÉFONO, TELÉFONO ADICIONAL y
+  TIPO DE PARTICIPANTE.
+- **L – O, manuales.** Solo se llenan cuando el nombre sale como `INEXISTENTE`
+  (la fila se pinta de naranja): correo, tipo, sede y programa.
+- **P – Q.** Actividad / espacio y observaciones.
 
-**Hoja `Evaluación`**
-- La segunda tabla refleja los valores **pegados**, no solo los escritos:
-  acepta números, texto, letras en minúscula y espacios sobrantes.
-- Las entradas no válidas se marcan en rojo.
+El tipo de participante se muestra como texto en mayúscula —`ESTUDIANTE`,
+`PROFESOR`, `ADMINISTRATIVO`— traduciendo los códigos 1, 27 y 28 que siguen
+guardados tal cual en las bases.
 
-**Hoja `Gráficos Evaluación`**
-- Una tabla con las diez preguntas (nombre corto, porcentaje y texto completo)
-  y **un solo gráfico** de barras horizontales, en vez de cuatro gráficos
-  superpuestos.
+Arriba hay dos bloques: el **buscador por nombre** (se escribe parte del nombre y
+se elige de una lista desplegable) y el **resumen de participación** con
+participantes, participaciones y porcentaje por tipo, con filtro de sede.
+
+## Correos y teléfonos
+
+El correo que manda es el institucional (`@uniminuto.edu`). El correo adicional
+del estudiante sale de `C_ESTUDIANTE2`, tomando la parte anterior al `#`, y se
+deja en blanco si coincide con el institucional. El teléfono principal es
+`TEL_CEL` y el adicional el primero de `TEL_RE` / `TEL_TR` que sea distinto.
+
+En `BD ADM-DOC` las columnas de correo adicional y teléfono están vacías en las
+1.585 filas, así que profesores y administrativos no traen esos datos.
 
 ## Mantenimiento
 
-Las bases `BD ADM-DOC` y `BD EST` conservan las mismas columnas del export, así que
-se siguen actualizando pegando encima. Los rangos con nombre cubren hasta 6.000
-filas de colaboradores y 60.000 de estudiantes; si el export crece más, hay que
-ampliarlos en *Fórmulas → Administrador de nombres*.
+Las bases conservan las columnas del export original, así que se siguen
+actualizando pegando encima. Los rangos con nombre cubren 6.000 filas de
+colaboradores y 60.000 de estudiantes; si el export crece más, hay que ampliarlos
+en *Fórmulas → Administrador de nombres*.
