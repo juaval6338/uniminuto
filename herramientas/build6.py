@@ -58,7 +58,7 @@ ANCHOS={'A':7,'B':11,'C':15,'D':10,'E':8,'F':34,'G':28,'H':31,'I':27,'J':13,'K':
         'M':27,'N':17,'O':9,'P':24,'Q':22,'R':22}
 for k,v in ANCHOS.items(): rg.column_dimensions[k].width=v
 rg.column_dimensions['A'].hidden=True                 # Q-Part oculta
-for i in range(20,45):                                # T..AR auxiliares
+for i in range(20,50):                                # T..AW auxiliares
     L=CL(i); rg.column_dimensions[L].width=12; rg.column_dimensions[L].hidden=True
 
 band(rg,'B1:R1','REGISTRO DE ASISTENCIA — BIENESTAR INSTITUCIONAL',AZUL,'FFFFFF',14)
@@ -71,15 +71,11 @@ style(rg,'B2:R2',font=Fo(10,True,AZUL2),fill=Fi('E9EFF7'),align=Al('left'))
 band(rg,'B4:G4','BUSCAR PARTICIPANTE POR NOMBRE',AZUL2,'FFFFFF',11)
 lbl(rg,'B5:C5','Escriba parte del nombre:')
 rg.merge_cells('D5:E5'); style(rg,'D5:E5',font=Fo(11,True,'7F6000'),fill=Fi(EDIT),align=Al('left'),border=BOX)
-rg.merge_cells('F5:G5')
-rg['F5']='=IF(TRIM($D$5&"")="","",IF($AK$3=1,"Estudiante","Colaborador"))'
-style(rg,'F5:G5',font=Fo(10,True,AZUL),fill=Fi(TOT),align=Al('center'),border=BOX)
-rg['AK3']=('=IF(TRIM($D$5&"")="","",IF(ISNUMBER(MATCH("*"&TRIM($D$5)&"*",BD_EST_NOM,0)),1,2))')
 
 lbl(rg,'B6:C6','Seleccione el nombre:')
 rg.merge_cells('D6:G6'); style(rg,'D6:G6',font=Fo(11,True,'7F6000'),fill=Fi(EDIT),align=Al('left'),border=BOX)
-dv(rg,'$AM$5:$AM$%d'%(4+SHOW),['D6'])
-for r,t in ((7,'Documento:'),(8,'Sede y programa:'),(9,'Correo institucional:')):
+dv(rg,'$AR$5:$AR$%d'%(4+SLOTS),['D6'])
+for r,t in ((7,'Documento:'),(8,'Sede y dependencia:'),(9,'Correo institucional:')):
     lbl(rg,'B%d:C%d'%(r,r),t)
     rg.merge_cells('D%d:G%d'%(r,r))
     style(rg,'D%d:G%d'%(r,r),font=Fo(11,True,AZUL),fill=Fi(TOT),align=Al('left'),border=BOX)
@@ -89,28 +85,47 @@ rg['D7']='=IF({p}="","",IF($AK$3=1,INDEX(BD_EST_DOC,{p}),INDEX(BD_COL_CC,{p}))&"
 rg['D8']=('=IF({p}="","",IF($AK$3=1,INDEX(BD_EST_SEDE,{p}),INDEX(BD_COL_SEDE,{p}))&"   —   "&'
           'IF($AK$3=1,INDEX(BD_EST_PROG,{p}),INDEX(BD_COL_PROG,{p})))').format(p=P5)
 rg['D9']='=IF({p}="","",IF($AK$3=1,INDEX(BD_EST_MAIL,{p}),INDEX(BD_COL_MAIL,{p}))&"")'.format(p=P5)
-SN=lambda p:'IF($AK$3=1,INDEX(BD_EST_NOM,%s),INDEX(BD_COL_NOM,%s))'%(p,p)
-SD=lambda p:'IF($AK$3=1,INDEX(BD_EST_DOC,%s),INDEX(BD_COL_CC,%s))'%(p,p)
+E,C = 'BD_EST_NOM','BD_COL_NOM'
+for base,(cp,cd,cf,ci) in (('BD_EST_NOM',('AH','AI','AJ','AK')),
+                           ('BD_COL_NOM',('AM','AN','AO','AP'))):
+    doc = 'BD_EST_DOC' if base=='BD_EST_NOM' else 'BD_COL_CC'
+    for k in range(SLOTS):
+        r=5+k
+        if k==0:
+            rg['%s%d'%(cp,r)]=('=IF(TRIM($D$5&"")="","",IFERROR(MATCH("*"&TRIM($D$5)&"*",{b},0),""))'
+                               ).format(b=base)
+        else:
+            rg['%s%d'%(cp,r)]=('=IF(${p}{q}="","",IFERROR(${p}{q}+MATCH("*"&TRIM($D$5)&"*",'
+                               'INDEX({b},${p}{q}+1):INDEX({b},ROWS({b})),0),""))'
+                               ).format(p=cp,q=r-1,b=base)
+        rg['%s%d'%(cd,r)]='=IF(${p}{r}="","",INDEX({d},${p}{r})&"")'.format(p=cp,r=r,d=doc)
+        rg['%s%d'%(cf,r)]=('=IF(${d}{r}="","",IF(MATCH(${d}{r},${d}$5:${d}${e},0)=ROW()-4,1,0))'
+                           ).format(d=cd,r=r,e=4+SLOTS)
+        rg['%s%d'%(ci,r)]='=IF(${f}{r}=1,COUNTIF(${f}$5:${f}{r},1),"")'.format(f=cf,r=r)
+NE='MAX($AK$5:$AK$%d)'%(4+SLOTS)
+NC='MAX($AP$5:$AP$%d)'%(4+SLOTS)
 for k in range(SLOTS):
     r=5+k
-    if k==0:
-        rg['AH%d'%r]=('=IF($AK$3="","",IFERROR(IF($AK$3=1,'
-                      'MATCH("*"&TRIM($D$5)&"*",BD_EST_NOM,0),'
-                      'MATCH("*"&TRIM($D$5)&"*",BD_COL_NOM,0)),""))')
-    else:
-        rg['AH%d'%r]=('=IF($AH{p}="","",IFERROR($AH{p}+IF($AK$3=1,'
-                      'MATCH("*"&TRIM($D$5)&"*",INDEX(BD_EST_NOM,$AH{p}+1):'
-                      'INDEX(BD_EST_NOM,ROWS(BD_EST_NOM)),0),'
-                      'MATCH("*"&TRIM($D$5)&"*",INDEX(BD_COL_NOM,$AH{p}+1):'
-                      'INDEX(BD_COL_NOM,ROWS(BD_COL_NOM)),0)),""))').format(p=r-1)
-    rg['AI%d'%r]='=IF($AH{r}="","",{f}&"")'.format(r=r,f=SD('$AH%d'%r))
-    rg['AJ%d'%r]='=IF($AI{r}="","",IF(MATCH($AI{r},$AI$5:$AI${e},0)=ROW()-4,1,0))'.format(r=r,e=4+SLOTS)
-    rg['AL%d'%r]='=IF($AJ{r}=1,COUNTIF($AJ$5:$AJ{r},1),"")'.format(r=r)
-for k in range(SHOW):
-    r=5+k
-    rg['AN%d'%r]=('=IFERROR(INDEX($AH$5:$AH${e},MATCH(ROWS($AN$5:AN{r}),$AL$5:$AL${e},0)),"")'
-                  ).format(r=r,e=4+SLOTS)
-    rg['AM%d'%r]='=IF($AN{r}="","",{n}&"   —   "&{d})'.format(r=r,n=SN('$AN%d'%r),d=SD('$AN%d'%r))
+    rg['AT%d'%r]=('=IF(ROWS($AT$5:AT{r})<={ne},1,IF(ROWS($AT$5:AT{r})<={ne}+{nc},2,""))'
+                  ).format(r=r,ne=NE,nc=NC)
+    rg['AS%d'%r]=('=IF($AT{r}="","",IF($AT{r}=1,'
+                  'INDEX($AH$5:$AH${e},MATCH(ROWS($AS$5:AS{r}),$AK$5:$AK${e},0)),'
+                  'INDEX($AM$5:$AM${e},MATCH(ROWS($AS$5:AS{r})-{ne},$AP$5:$AP${e},0))))'
+                  ).format(r=r,e=4+SLOTS,ne=NE)
+    rg['AR%d'%r]=('=IF($AS{r}="","",IF($AT{r}=1,INDEX(BD_EST_NOM,$AS{r}),INDEX(BD_COL_NOM,$AS{r}))'
+                  '&"   —   "&IF($AT{r}=1,INDEX(BD_EST_DOC,$AS{r}),INDEX(BD_COL_CC,$AS{r})))'
+                  ).format(r=r)
+rg['AU3']='=IFERROR(MATCH($D$6,$AR$5:$AR$%d,0),"")'%(4+SLOTS)
+rg['AV3']='=IF($AU$3="","",INDEX($AS$5:$AS$%d,$AU$3))'%(4+SLOTS)
+rg['AW3']='=IF($AU$3="","",INDEX($AT$5:$AT$%d,$AU$3))'%(4+SLOTS)
+rg.merge_cells('F5:G5')
+rg['F5']='=IF($AW$3="","",IF($AW$3=1,"Estudiante","Colaborador"))'
+style(rg,'F5:G5',font=Fo(10,True,AZUL),fill=Fi(TOT),align=Al('center'),border=BOX)
+P5='$AV$3'; B5='$AW$3'
+rg['D7']='=IF({p}="","",IF({b}=1,INDEX(BD_EST_DOC,{p}),INDEX(BD_COL_CC,{p}))&"")'.format(p=P5,b=B5)
+rg['D8']=('=IF({p}="","",IF({b}=1,INDEX(BD_EST_SEDE,{p}),INDEX(BD_COL_SEDE,{p}))&"   —   "&'
+          'IF({b}=1,INDEX(BD_EST_PROG,{p}),INDEX(BD_COL_PROG,{p})))').format(p=P5,b=B5)
+rg['D9']='=IF({p}="","",IF({b}=1,INDEX(BD_EST_MAIL,{p}),INDEX(BD_COL_MAIL,{p}))&"")'.format(p=P5,b=B5)
 
 # ---- resumen ----
 band(rg,'J4:P4','RESUMEN DE PARTICIPACIÓN',AZUL2,'FFFFFF',11)
@@ -159,9 +174,9 @@ style(rg,'G12:G12',font=Fo(9,True,'843C0C'),fill=Fi(ALERTA),align=Al('center'),b
 
 # ---- tabla ----
 HDR={'A':'Q-Part','B':'Fecha','C':'Documento\n(C.C. o ID)','D':'ID','E':'SEDE',
-     'F':'APELLIDOS Y NOMBRES','G':'PROGRAMA / ÁREA','H':'CORREO INSTITUCIONAL\n(@uniminuto.edu)',
+     'F':'APELLIDOS Y NOMBRES','G':'DEPENDENCIA','H':'CORREO INSTITUCIONAL\n(@uniminuto.edu)',
      'I':'CORREO ADICIONAL','J':'TELÉFONO','K':'TELÉFONO ADICIONAL','L':'TIPO DE\nPARTICIPANTE',
-     'M':'Correo','N':'Tipo','O':'Sede','P':'Programa / Área',
+     'M':'Correo','N':'Tipo','O':'Sede','P':'Dependencia',
      'Q':'Actividad / espacio','R':'Observaciones'}
 band(rg,'M13:P13','COMPLETE SOLO SI EL NOMBRE APARECE COMO «INEXISTENTE»','BF8F00','FFFFFF',9,'center')
 for c,t in HDR.items(): rg[c+'14']=t
@@ -267,7 +282,7 @@ for k,v in {'A':2,'B':34,'C':14,'D':15,'E':3,'F':30,'G':14,'H':15,'I':3,'J':30,'
     rp.column_dimensions[k].width=v
 for i in range(14,27):
     L=CL(i); rp.column_dimensions[L].width=12; rp.column_dimensions[L].hidden=True
-band(rp,'B1:L1','PARTICIPACIÓN POR PROGRAMA Y ÁREA',AZUL,'FFFFFF',14)
+band(rp,'B1:L1','PARTICIPACIÓN POR DEPENDENCIA',AZUL,'FFFFFF',14)
 rp.row_dimensions[1].height=26
 lbl(rp,'B3:B3','Sede:')
 rp['C3']="=Registros!$L$5"
@@ -309,9 +324,9 @@ def bloque(cini,titulo,encab,tipo,pn,ix,aux):
     style(rp,'%s%d:%s%d'%(c0,RTOT,c0,RTOT),align=Al('left'))
     style(rp,'%s%d:%s%d'%(c1,H0,c2,RTOT),fmt='#,##0')
 
-bloque(2,'ESTUDIANTES','Programa académico','ESTUDIANTE','REG_PROGEST','REG_IEST',('N','O','P','Q'))
-bloque(6,'PROFESORES','Área / dependencia','PROFESOR','REG_PROGPRO','REG_IPRO',('R','S','T','U'))
-bloque(10,'ADMINISTRATIVOS','Área / dependencia','ADMINISTRATIVO','REG_PROGADM','REG_IADM',('V','W','X','Y'))
+bloque(2,'ESTUDIANTES','Dependencia','ESTUDIANTE','REG_PROGEST','REG_IEST',('N','O','P','Q'))
+bloque(6,'PROFESORES','Dependencia','PROFESOR','REG_PROGPRO','REG_IPRO',('R','S','T','U'))
+bloque(10,'ADMINISTRATIVOS','Dependencia','ADMINISTRATIVO','REG_PROGADM','REG_IADM',('V','W','X','Y'))
 rp.freeze_panes='A7'
 
 # ============================ EVALUACIÓN ============================
@@ -494,11 +509,11 @@ NAMES={
 for n2,v2 in NAMES.items(): wb.defined_names.add(DefinedName(n2,attr_text=v2))
 wb.calculation.fullCalcOnLoad=True
 wb.properties.title='Registro de Asistencia'
-raw=SP+'/_v14_raw.xlsx'
+raw=SP+'/_v15_raw.xlsx'
 wb.save(raw)
 import sys; sys.path.insert(0,SP)
 from sharedstr import convert
-out=SP+'/Registro_Asistencia_2026-1_V14.xlsx'
+out=SP+'/Registro_Asistencia_2026-1_V15.xlsx'
 n,size=convert(raw,out)
 print('cadenas compartidas:',n,'| tamaño: %.1f MB'%(size/1048576))
 print('guardado:',out)

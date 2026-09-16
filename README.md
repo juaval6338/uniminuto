@@ -3,7 +3,7 @@
 Libro para registrar la asistencia a las actividades de Bienestar. Se escribe la
 cédula o el ID del participante y el archivo trae sus datos desde las bases.
 
-- `libro/Registro_Asistencia_2026-1_V14.xlsx` — el libro listo para usar.
+- `libro/Registro_Asistencia_2026-1_V15.xlsx` — el libro listo para usar.
 - `herramientas/` — scripts que generan el libro y que leen el `.xlsb` original.
 
 ## Hojas
@@ -22,7 +22,7 @@ La tabla empieza en la fila 13 (encabezados) y tiene tres zonas:
 
 - **A – K, automáticas.** Documento, SEDE, APELLIDOS Y NOMBRES, PROGRAMA / ÁREA,
   CORREO INSTITUCIONAL, CORREO ADICIONAL, TELÉFONO, TELÉFONO ADICIONAL y
-  TIPO DE PARTICIPANTE.
+  TIPO DE PARTICIPANTE. La columna de programa o área se llama DEPENDENCIA.
 - **L – O, manuales.** Solo se llenan cuando el nombre sale como `INEXISTENTE`
   (la fila se pinta de naranja): correo, tipo, sede y programa.
 - **P – Q.** Actividad / espacio y observaciones.
