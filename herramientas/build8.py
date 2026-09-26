@@ -59,15 +59,26 @@ for r in range(FIRST, rg.max_row+1):
         if c>=19 or (isinstance(cell.value,str) and cell.value.startswith('=')) or r>LAST:
             cell.value=None
 # nuevas columnas S y T con el estilo de R; U separador
-rg.column_dimensions['S'].width=16; rg.column_dimensions['T'].width=34; rg.column_dimensions['U'].width=4
-for c in ('S','T','U','V','W'): rg.column_dimensions[c].hidden=False
+from openpyxl.worksheet.dimensions import DimensionHolder, ColumnDimension
+_w={}
+for k,d in rg.column_dimensions.items():
+    for i in range(d.min or 1, (d.max or d.min or 1)+1):
+        if i<=19: _w[i]=(d.width,d.hidden)
+dh=DimensionHolder(worksheet=rg)
+for i in range(1,20):
+    w,h=_w.get(i,(11,False))
+    L=CL(i); dh[L]=ColumnDimension(rg,index=L,width=w,hidden=(i<=3))   # A..C ocultas como en el original
+dh['S'].width=16
+dh['T']=ColumnDimension(rg,index='T',width=34)
+dh['U']=ColumnDimension(rg,index='U',width=4)
+_v=ColumnDimension(rg,index='V',width=11,hidden=True); _v.min=22; _v.max=16384   # todo lo demás oculto, como el original
+dh['V']=_v
+rg.column_dimensions=dh
 cp(rg['S18'],rg['R18']); cp(rg['T18'],rg['R18'])
 for c in ('T','U'): cp(rg[c+'10'],rg['S10'])        # la franja gris del título llega hasta la T
 for r in range(FIRST,LAST+1):
     cp(rg['S%d'%r],rg['R%d'%r]); cp(rg['T%d'%r],rg['J%d'%r])
 # columnas auxiliares ocultas W..AN
-for i in range(23,41):
-    L=CL(i); rg.column_dimensions[L].width=11; rg.column_dimensions[L].hidden=True
 
 # encabezados
 rg['H18']='Dependencia'
@@ -203,9 +214,13 @@ rg.conditional_formatting.add('I%d:I%d'%(FIRST,LAST),
     CellIsRule(operator='equal',formula=['0'],font=Font(color='FFFFFFFF')))
 rg.conditional_formatting.add('E%d:T%d'%(FIRST,LAST),
     FormulaRule(formula=['$J%d="INEXISTENTE"'%FIRST],fill=PatternFill('solid',fgColor='FFFFD9CC')))
-rg.freeze_panes=None
-rg.sheet_view.topLeftCell='A1'
-rg.sheet_view.selection[0].activeCell='F19'; rg.sheet_view.selection[0].sqref='F19'
+from openpyxl.worksheet.views import SheetView, Pane, Selection
+_old=rg.sheet_view
+sv=SheetView(workbookViewId=0, zoomScale=_old.zoomScale or 80, zoomScaleNormal=_old.zoomScaleNormal or 80,
+             showGridLines=_old.showGridLines, tabSelected=True)
+sv.pane=Pane(ySplit=18, topLeftCell='A19', activePane='bottomLeft', state='frozen')   # como el original
+sv.selection=[Selection(pane='bottomLeft', activeCell='F19', sqref='F19')]
+rg.views.sheetView=[sv]
 
 # ======================= RESULTADOS POR TIPO: se elimina =======================
 del wb['Resultados por tipo']
@@ -218,8 +233,6 @@ rp['D3']='=Registros!$M$2'
 rp['F5']='PROFESORES PARTICIPANTES'
 for c in ('B7','F7','J7'): rp[c]='Dependencia'
 H0,H1,TOT = 8,37,38
-for i in range(14,26):                                  # N..Y auxiliares ocultas
-    L=CL(i); rp.column_dimensions[L].width=10; rp.column_dimensions[L].hidden=True
 for r in range(H0,TOT+1):
     for c in range(14,26): rp.cell(row=r,column=c).value=None
 def bloque(cini,tipo,pn,ix,aux):
@@ -348,12 +361,12 @@ for n2,v2 in NAMES.items(): wb.defined_names.add(DefinedName(n2,attr_text=v2))
 wb.active=wb.sheetnames.index('Registros')
 for ws in wb.worksheets: ws.sheet_view.tabSelected = (ws.title=='Registros')
 wb.calculation.fullCalcOnLoad=True
-raw=SP+'/_v17_raw.xlsx'
+raw=SP+'/_v18_raw.xlsx'
 wb.save(raw)
 from sharedstr import trim_empty_cells
-trim=SP+'/_v17_trim.xlsx'
+trim=SP+'/_v18_trim.xlsx'
 print('limpiadas:',trim_empty_cells(raw,trim,{'BD EST','BD ADM-DOC'}))
-out=SP+'/Registro_Asistencia_2026-1_V17.xlsx'
+out=SP+'/Registro_Asistencia_2026-1_V18.xlsx'
 n,size=convert(trim,out)
 print('cadenas compartidas:',n,'| tamaño: %.1f MB'%(size/1048576))
 print('guardado:',out,'(%.0fs)'%(time.time()-t0))

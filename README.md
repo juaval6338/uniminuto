@@ -3,9 +3,10 @@
 Libro para registrar la asistencia a las actividades de Bienestar. Se escribe la
 cédula o el ID del participante y el archivo trae sus datos desde las bases.
 
-- `libro/Registro_Asistencia_2026-1_V17.xlsx` — el libro listo para usar.
+- `libro/Registro_Asistencia_2026-1_V18.xlsx` — el libro listo para usar.
 - `herramientas/` — scripts que generan el libro (`build8.py`), el conversor de
-  cadenas compartidas (`sharedstr.py`) y los lectores del `.xlsb` original.
+  cadenas compartidas (`sharedstr.py`), el validador (`validar.py`) y los lectores
+  del `.xlsb` original.
 
 ## Punto de partida
 
@@ -35,6 +36,7 @@ que se pidió expresamente.
   (estudiantes) o J15 (colaboradores), o el correo en L14.
 - Resumen de participación arriba a la derecha (L1:P8) con filtro de sede en M2.
 - 2000 filas de registro (19 a 2018). Q-Part, Día y Mes van ocultas.
+- Los encabezados quedan inmovilizados hasta la fila 18, como en el original.
 
 ## Otras hojas
 
@@ -50,3 +52,16 @@ que se pidió expresamente.
 Las bases conservan las columnas del export, así que se actualizan pegando encima
 bajo el encabezado de la fila 1. Las fórmulas apuntan a columnas completas, sin
 tope de filas.
+
+## Validación antes de entregar
+
+`herramientas/validar.py` revisa el archivo con las reglas que Excel exige y que
+provocan el aviso «Hemos encontrado un problema con el contenido»: vistas con
+selecciones en paneles inexistentes, columnas solapadas, filas o celdas fuera de
+orden, estilos o cadenas inexistentes, celdas combinadas solapadas, validaciones
+mal escritas y dibujos vacíos. Se probó contra las versiones anteriores: detecta
+el fallo de la V13 y el de la V17, y da por buena la V16, que abrió sin aviso.
+
+```
+python3 herramientas/validar.py libro/Registro_Asistencia_2026-1_V18.xlsx
+```
