@@ -122,3 +122,58 @@ if __name__=='__main__':
         e=validar(p)
         print('%s: %s'%(p.split('/')[-1], 'SIN PROBLEMAS' if not e else '%d problema(s)'%len(e)))
         for x in e[:25]: print('   -',x)
+
+
+def validar_pivots(path):
+    """Coherencia interna de tablas dinámicas: índices, conteos, caché y relaciones."""
+    errs=[]; z=zipfile.ZipFile(path); names=set(z.namelist())
+    wb=z.read('xl/workbook.xml').decode()
+    rels=z.read('xl/_rels/workbook.xml.rels').decode()
+    ids={}
+    for tag in re.findall(r'<Relationship [^>]*>',rels):
+        ids[re.search(r'Id="([^"]+)"',tag).group(1)]=re.search(r'Target="([^"]+)"',tag).group(1)
+    caches={}
+    for cid,rid in re.findall(r'<pivotCache cacheId="(\d+)" r:id="([^"]+)"/>',wb):
+        caches[int(cid)]='xl/'+ids[rid]
+    ct=z.read('[Content_Types].xml').decode()
+    dn=dict(re.findall(r'<definedName name="([^"]+)"[^>]*>([^<]*)</definedName>',wb))
+    for part in sorted(n for n in names if re.match(r'xl/pivotTables/pivotTable\d+\.xml$',n)):
+        t=ET.fromstring(z.read(part)); pre='[%s] '%part.split('/')[-1]
+        if '/'+part not in ct: errs.append(pre+'sin tipo de contenido')
+        cid=int(t.get('cacheId'))
+        if cid not in caches: errs.append(pre+'cacheId sin pivotCache en workbook'); continue
+        cd=ET.fromstring(z.read(caches[cid]))
+        cf=cd.findall('.//m:cacheField',NS)
+        pf=t.findall('.//m:pivotField',NS)
+        if len(pf)!=len(cf): errs.append(pre+'campos de tabla != campos de caché')
+        ws=cd.find('.//m:worksheetSource',NS)
+        if ws.get('name') and ws.get('name') not in dn: errs.append(pre+'origen %s no es un nombre definido'%ws.get('name'))
+        for f,c in zip(pf,cf):
+            si=c.find('m:sharedItems',NS); n=len(si)
+            if int(si.get('count',n))!=n: errs.append(pre+'sharedItems count')
+            it=f.find('m:items',NS)
+            if it is not None:
+                xs=[int(i.get('x')) for i in it if i.get('x') is not None]
+                if int(it.get('count'))!=len(it): errs.append(pre+'items count')
+                if any(x>=n for x in xs) or len(set(xs))!=len(xs): errs.append(pre+'items fuera de rango o repetidos')
+            if any(ch.tag.endswith('}m') for ch in si) and si.get('containsBlank')!='1':
+                errs.append(pre+'vacío sin containsBlank')
+            vals=[ch.get('v','').casefold() for ch in si if ch.tag.endswith('}s')]
+            if len(vals)!=len(set(vals)): errs.append(pre+'elementos repetidos (sin distinguir mayúsculas)')
+        rr=re.search(r'r:id="([^"]+)"',z.read(caches[cid]).decode())
+        if rr:
+            crels=caches[cid].replace('pivotCache/','pivotCache/_rels/')+'.rels'
+            rec='xl/pivotCache/'+re.search(r'Target="([^"]+)"',z.read(crels).decode()).group(1)
+            rec_root=ET.fromstring(z.read(rec)); recs=rec_root.findall('m:r',NS)
+            if int(cd.get('recordCount',len(recs)))!=len(recs) or int(rec_root.get('count'))!=len(recs):
+                errs.append(pre+'recordCount no coincide')
+            nsi=len(cf[0].find('m:sharedItems',NS))
+            if any(int(x.get('v'))>=nsi for r_ in recs for x in r_): errs.append(pre+'registro fuera de rango')
+        loc=t.find('m:location',NS).get('ref')
+        errs+=[pre+'ubicación inválida'] if not re.match(r'^[A-Z]+\d+(:[A-Z]+\d+)?$',loc) else []
+    return errs
+
+if __name__=='__main__' and len(sys.argv)>1:
+    for p in sys.argv[1:]:
+        e=validar_pivots(p)
+        print('%s tablas dinámicas: %s'%(p.split('/')[-1],'SIN PROBLEMAS' if not e else e[:15]))

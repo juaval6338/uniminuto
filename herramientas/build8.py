@@ -157,21 +157,26 @@ for r in range(FIRST,LAST+1):
         rg['%s%d'%(ic,r)]='=IF(${p}{r}="","",COUNTIF(${p}${f}:${p}{r},"?*"))'.format(r=r,p=pc,f=FIRST)
 print('fórmulas de Registros listas (%.0fs)'%(time.time()-t0))
 
-# ---- buscador (mismo lugar y aspecto del original, sin tabla dinámica) ----
-rg['G13']='Dependencia'; rg['J13']='Seleccione Nombre'; rg['L13']='Escriba el correo'
-for ref in ('J14','L14','J15'):
-    c=rg[ref]; c.value=None; cp(c, rg['E14'])
-    c.fill=INPUT_FILL; c.alignment=Alignment(horizontal='left',vertical='center')
-    c.font=Font(name='Arial',size=10,bold=True,color='FF000000')
-rg['K14']='← elija el nombre de la lista   ·   o escriba el correo →'
-rg['AM14']=('=IF(TRIM($J$14&"")<>"",IFERROR(MATCH(TRIM($J$14),BD_EST_NOM,0),'
-            'IFERROR(MATCH("*"&TRIM($J$14)&"*",BD_EST_NOM,0),"")),'
-            'IF(TRIM($L$14&"")<>"",IFERROR(MATCH(TRIM($L$14),BD_EST_MAIL,0),'
-            'IFERROR(MATCH("*"&TRIM($L$14)&"*",BD_EST_MAIL,0),"")),""))')
-rg['AM15']=('=IF(TRIM($J$15&"")="","",IFERROR(MATCH(TRIM($J$15),BD_COL_NOM,0),'
-            'IFERROR(MATCH("*"&TRIM($J$15)&"*",BD_COL_NOM,0),"")))')
-for r,escrito,sede,idc,prog,doc in ((14,'$J$14&$L$14','BD_EST_SEDE','BD_EST_ID','BD_EST_PROG','BD_EST_DOC'),
-                                    (15,'$J$15','BD_COL_SEDE','BD_COL_ID','BD_COL_PROG','BD_COL_CC')):
+# ---- buscador (mismo lugar y aspecto del original; los filtros son tablas dinámicas, ver pivots.py) ----
+rg['G13']='Dependencia'; rg['J13']='Seleccione Nombre'; rg['L13']='Seleccione Correo'
+CAP_MAIL='← elija el nombre   ·   o busque por correo →'
+# las tablas dinámicas escriben aquí su filtro; se dejan los valores que mostrarán al abrir
+rg['I14']='Estudiante'; rg['J14']='(Todas)'
+rg['I15']='Colaborador'; rg['J15']='(Todas)'
+rg['K14']=CAP_MAIL; rg['L14']='(Todas)'
+for ref in ('I16','I17','K16'): rg[ref].value=None
+# lo que eligió el usuario; «(Todas)», «(Varios elementos)» (o «- all -» en LibreOffice) = nada elegido.
+# Se compara tal cual viene del filtro: hay nombres en la base con espacio al final.
+for ref,src in (('AN14','$J$14'),('AO14','$L$14'),('AN15','$J$15')):
+    rg[ref]=('=IF(OR(TRIM({s}&"")="",LEFT(TRIM({s}&""),1)="(",LEFT(TRIM({s}&""),1)="-"),"",{s}&"")'
+             ).format(s=src)
+# MATCH toma * ? ~ como comodines: se escapan para buscar el nombre exacto
+ESC=lambda x: 'SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(%s,"~","~~"),"*","~*"),"?","~?")' % x
+rg['AM14']=('=IF($AN$14<>"",IFERROR(MATCH(%s,BD_EST_NOM,0),""),'
+            'IF($AO$14<>"",IFERROR(MATCH(%s,BD_EST_MAIL,0),""),""))') % (ESC('$AN$14'),ESC('$AO$14'))
+rg['AM15']='=IF($AN$15="","",IFERROR(MATCH(%s,BD_COL_NOM,0),""))' % ESC('$AN$15')
+for r,escrito,sede,idc,prog,doc in ((14,'$AN$14&$AO$14','BD_EST_SEDE','BD_EST_ID','BD_EST_PROG','BD_EST_DOC'),
+                                    (15,'$AN$15','BD_COL_SEDE','BD_COL_ID','BD_COL_PROG','BD_COL_CC')):
     p='$AM$%d'%r
     rg['E%d'%r]=('=IF(TRIM({e})="","",IF({p}="","No encontrado",INDEX({s},{p})&""))'
                  ).format(e=escrito,p=p,s=sede)
@@ -217,8 +222,7 @@ v.promptTitle='Ingreso de fecha:'; v.prompt='Ingrese fecha DD/MM/AAAA, con núme
 dv(rg,'"%s"'%','.join(TIPOS),['M%d:M%d'%(FIRST,LAST)])
 dv(rg,'"%s"'%','.join(SEDES),['N%d:N%d'%(FIRST,LAST)])
 dv(rg,'"TODAS,%s"'%','.join(SEDES),['M2'])
-for ref,lista in (('J14','LISTA_EST'),('J15','LISTA_COL')):
-    v=dv(rg,lista,[ref]); v.showErrorMessage=False      # también acepta parte del nombre escrita a mano
+
 
 # ---- formato condicional ----
 rg.conditional_formatting=ConditionalFormattingList()
@@ -239,6 +243,8 @@ sv=SheetView(workbookViewId=0, zoomScale=_old.zoomScale or 80, zoomScaleNormal=_
 sv.pane=Pane(ySplit=18, topLeftCell='A19', activePane='bottomLeft', state='frozen')   # como el original
 sv.selection=[Selection(pane='bottomLeft', activeCell='F19', sqref='F19')]
 rg.views.sheetView=[sv]
+
+rg.auto_filter.ref='E18:U%d'%LAST
 
 # ======================= RESULTADOS POR TIPO: se elimina =======================
 del wb['Resultados por tipo']
@@ -371,8 +377,6 @@ NAMES={
  'BD_COL_CC':COL('B'),'BD_COL_ID':COL('C'),'BD_COL_NOM':COL('D'),'BD_COL_COD':COL('I'),
  'BD_COL_PROG':COL('K'),'BD_COL_MAIL':COL('L'),'BD_COL_MAIL2':COL('M'),'BD_COL_TEL':COL('N'),
  'BD_COL_SEDE':COL('P'),
- 'LISTA_EST':"'BD EST'!$C$2:INDEX('BD EST'!$C:$C,MATCH(REPT(\"z\",255),'BD EST'!$C:$C))",
- 'LISTA_COL':"'BD ADM-DOC'!$D$2:INDEX('BD ADM-DOC'!$D:$D,MATCH(REPT(\"z\",255),'BD ADM-DOC'!$D:$D))",
  'REG_QPART':RG('A'),'REG_SEDE':RG('G'),'REG_PROG':RG('H'),'REG_TIPO':RG('P'),'REG_PRIM':RG('AA'),
  'REG_PROGEST':RG('AD'),'REG_IEST':RG('AE'),'REG_PROGPRO':RG('AG'),'REG_IPRO':RG('AH'),
  'REG_PROGADM':RG('AJ'),'REG_IADM':RG('AK')}
@@ -381,12 +385,32 @@ for n2,v2 in NAMES.items(): wb.defined_names.add(DefinedName(n2,attr_text=v2))
 wb.active=wb.sheetnames.index('Registros')
 for ws in wb.worksheets: ws.sheet_view.tabSelected = (ws.title=='Registros')
 wb.calculation.fullCalcOnLoad=True
-raw=SP+'/_v19_raw.xlsx'
+# Sin protección (el original la tenía sin contraseña): bloquea las tablas
+# dinámicas del buscador y el pegado en celdas bloqueadas.
+from openpyxl.worksheet.protection import SheetProtection
+for ws in wb.worksheets: ws.protection=SheetProtection()
+wb.security=None
+raw=SP+'/_v21_raw.xlsx'
 wb.save(raw)
 from sharedstr import trim_empty_cells
-trim=SP+'/_v19_trim.xlsx'
+trim=SP+'/_v21_trim.xlsx'
 print('limpiadas:',trim_empty_cells(raw,trim,{'BD EST','BD ADM-DOC'}))
-out=SP+'/Registro_Asistencia_2026-1_V19.xlsx'
-n,size=convert(trim,out)
+conv=SP+'/_v21_conv.xlsx'
+n,size=convert(trim,conv)
+import pickle
+from pivots import add_pivots
+_D=pickle.load(open(SP+'/data.pkl','rb'))
+_est=_D['est'][1:]
+_adm=[r for r in _D['adm'][1:] if any(v not in (None,'') for v in r)]
+nz=lambda v: None if v in (None,'') else str(v)
+out=SP+'/Registro_Asistencia_2026-1_V21.xlsx'
+add_pivots(conv,out,'Registros',[
+  dict(name='TablaDinamica1',location='I16',caption='Estudiante',field='APELLIDOS_NOMBRES',
+       source=('BD EST','C1:C1048576'),values=[nz(r[2]) for r in _est]),
+  dict(name='TablaDinamica2',location='I17',caption='Colaborador',field='Apellidos y Nombres',
+       source=('BD ADM-DOC','D1:D1048576'),values=[nz(r[3]) for r in _adm]),
+  dict(name='TablaDinamica3',location='K16',caption=CAP_MAIL,field='C_ESTUDIANTE1',
+       source=('BD EST','Y1:Y1048576'),values=[nz(r[24]) for r in _est])])
+import os; size=os.path.getsize(out)
 print('cadenas compartidas:',n,'| tamaño: %.1f MB'%(size/1048576))
 print('guardado:',out,'(%.0fs)'%(time.time()-t0))

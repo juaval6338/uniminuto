@@ -3,10 +3,10 @@
 Libro para registrar la asistencia a las actividades de Bienestar. Se escribe la
 cédula o el ID del participante y el archivo trae sus datos desde las bases.
 
-- `libro/Registro_Asistencia_2026-1_V19.xlsx` — el libro listo para usar.
-- `herramientas/` — scripts que generan el libro (`build8.py`), el conversor de
-  cadenas compartidas (`sharedstr.py`), el validador (`validar.py`) y los lectores
-  del `.xlsb` original.
+- `libro/Registro_Asistencia_2026-1_V21.xlsx` — el libro listo para usar.
+- `herramientas/` — scripts que generan el libro (`build8.py`), las tablas
+  dinámicas del buscador (`pivots.py`), el conversor de cadenas compartidas
+  (`sharedstr.py`), el validador (`validar.py`) y los lectores del `.xlsb` original.
 
 ## Punto de partida
 
@@ -34,10 +34,13 @@ que se pidió expresamente.
 - La columna U muestra siempre la cédula, aunque en F se haya escrito el ID.
 - El documento se reconoce aunque venga pegado como texto, con puntos o con
   espacios (también el espacio invisible que traen las páginas web y Forms).
-- Buscador (filas 13 a 15), como en el original: J14 (estudiantes) y J15
-  (colaboradores) tienen una lista desplegable con todos los nombres de la base,
-  sin renglones en blanco y hasta la última fila, aunque la base crezca. También
-  se puede escribir parte del nombre, o el correo en L14.
+- Buscador (filas 13 a 15) con **tablas dinámicas**, como en el original: el
+  filtro de J14 (estudiantes), J15 (colaboradores) y L14 (correo de estudiante)
+  trae los nombres en orden alfabético, sin repetidos y con cuadro «Buscar». Las
+  tablas dinámicas están en I16, I17 y K16 (las mismas posiciones del original)
+  y leen columnas completas de las bases (`'BD EST'!C:C`, `'BD EST'!Y:Y`,
+  `'BD ADM-DOC'!D:D`). Al elegir un nombre, E14:H15 muestran sede, ID,
+  dependencia y cédula.
 - Resumen de participación arriba a la derecha (L1:P8) con filtro de sede en M2.
 - 2000 filas de registro (19 a 2018). Q-Part, Día y Mes van ocultas.
 - Los encabezados quedan inmovilizados hasta la fila 18, como en el original.
@@ -57,6 +60,12 @@ Las bases conservan las columnas del export, así que se actualizan pegando enci
 bajo el encabezado de la fila 1. Las fórmulas apuntan a columnas completas, sin
 tope de filas.
 
+Después de alimentar las bases, **Datos → Actualizar todo** pone al día las
+listas del buscador (igual que en el original, no se actualizan solas al abrir).
+
+Ninguna hoja está protegida. El original protegía cuatro hojas sin contraseña,
+y eso impedía actualizar las tablas dinámicas y pegar en celdas bloqueadas.
+
 ## Validación antes de entregar
 
 `herramientas/validar.py` revisa el archivo con las reglas que Excel exige y que
@@ -67,5 +76,5 @@ mal escritas y dibujos vacíos. Se probó contra las versiones anteriores: detec
 el fallo de la V13 y el de la V17, y da por buena la V16, que abrió sin aviso.
 
 ```
-python3 herramientas/validar.py libro/Registro_Asistencia_2026-1_V19.xlsx
+python3 herramientas/validar.py libro/Registro_Asistencia_2026-1_V21.xlsx
 ```
