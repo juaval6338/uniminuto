@@ -23,6 +23,13 @@ wb=load_workbook(SP+'/orig/original.xlsx')
 print('cargado en %.0fs'%(time.time()-t0))
 
 FIRST, LAST = 19, 2018           # 2000 filas de registro
+# filas totalmente vacías dentro de BD ADM-DOC: se quitan para que la lista no muestre blancos
+_adm=wb['BD ADM-DOC']
+_last=max(r for r in range(2,_adm.max_row+1) if any(_adm.cell(row=r,column=c).value not in (None,'') for c in range(1,17)))
+_vacias=[r for r in range(2,_last+1) if all(_adm.cell(row=r,column=c).value in (None,'') for c in range(1,17))]
+for r in reversed(_vacias): _adm.delete_rows(r)
+print('filas vacías quitadas de BD ADM-DOC:',len(_vacias))
+
 SEDES=['BUG','BVA','CHI','CIN','FLO','IPI','PAS','PER','QUI']
 TIPOS=['ESTUDIANTE','PROFESOR','ADMINISTRATIVO','EXTERNO']
 def cp(dst,src): dst._style=copy(src._style)
@@ -70,14 +77,16 @@ for i in range(1,20):
     L=CL(i); dh[L]=ColumnDimension(rg,index=L,width=w,hidden=(i<=3))   # A..C ocultas como en el original
 dh['S'].width=16
 dh['T']=ColumnDimension(rg,index='T',width=34)
-dh['U']=ColumnDimension(rg,index='U',width=4)
-_v=ColumnDimension(rg,index='V',width=11,hidden=True); _v.min=22; _v.max=16384   # todo lo demás oculto, como el original
-dh['V']=_v
+dh['U']=ColumnDimension(rg,index='U',width=15)
+dh['V']=ColumnDimension(rg,index='V',width=4)
+_w2=ColumnDimension(rg,index='W',width=11,hidden=True); _w2.min=23; _w2.max=16384  # todo lo demás oculto, como el original
+dh['W']=_w2
 rg.column_dimensions=dh
-cp(rg['S18'],rg['R18']); cp(rg['T18'],rg['R18'])
-for c in ('T','U'): cp(rg[c+'10'],rg['S10'])        # la franja gris del título llega hasta la T
+cp(rg['S18'],rg['R18']); cp(rg['T18'],rg['R18']); cp(rg['U18'],rg['R18'])
+for c in ('T','U','V'): cp(rg[c+'10'],rg['S10'])    # la franja gris del título llega hasta la V
 for r in range(FIRST,LAST+1):
-    cp(rg['S%d'%r],rg['R%d'%r]); cp(rg['T%d'%r],rg['J%d'%r])
+    cp(rg['S%d'%r],rg['R%d'%r]); cp(rg['T%d'%r],rg['J%d'%r]); cp(rg['U%d'%r],rg['R%d'%r])
+    rg['U%d'%r].number_format='0'
 # columnas auxiliares ocultas W..AN
 
 # encabezados
@@ -86,6 +95,7 @@ rg['O18']='Ingrese\nDependencia'
 rg['P18']='Tipo\nPart'
 rg['S18']='Teléfono\nadicional'
 rg['T18']='Correo adicional'
+rg['U18']='Número de\ncédula'
 rg['E11']=('Ingrese la fecha y el ID o C.C. en las casillas sin relleno (título azul claro). '
            'Si el participante aparece como INEXISTENTE, complete las columnas L a O. '
            'Si no tiene el documento, escriba el nombre en el buscador.')
@@ -137,6 +147,8 @@ for r in range(FIRST,LAST+1):
                   'IF(AND(INDEX(BD_EST_TEL3,$Y{r})&""<>"",INDEX(BD_EST_TEL3,$Y{r})&""<>$R{r}),'
                   'INDEX(BD_EST_TEL3,$Y{r})&"","")))')
     rg['T%d'%r]=f('=IF(OR($AB{r}="",$AB{r}=$K{r}),"",$AB{r})')
+    rg['U%d'%r]=f('=IF($W{r}="","",IF($Y{r}<>"",IF(INDEX(BD_EST_DOC,$Y{r})&""="","",INDEX(BD_EST_DOC,$Y{r})),'
+                  'IF($X{r}<>"",INDEX(BD_COL_CC,$X{r}),$W{r})))')
     for tp,(kc,pc,ic) in (('ESTUDIANTE',('AC','AD','AE')),('PROFESOR',('AF','AG','AH')),
                           ('ADMINISTRATIVO',('AI','AJ','AK'))):
         rg['%s%d'%(kc,r)]='=IF(AND($P{r}="{t}",$H{r}<>""),$H{r}&"","")'.format(r=r,t=tp)
@@ -146,12 +158,12 @@ for r in range(FIRST,LAST+1):
 print('fórmulas de Registros listas (%.0fs)'%(time.time()-t0))
 
 # ---- buscador (mismo lugar y aspecto del original, sin tabla dinámica) ----
-rg['G13']='Dependencia'; rg['J13']='Escriba el nombre'; rg['L13']='Escriba el correo'
+rg['G13']='Dependencia'; rg['J13']='Seleccione Nombre'; rg['L13']='Escriba el correo'
 for ref in ('J14','L14','J15'):
     c=rg[ref]; c.value=None; cp(c, rg['E14'])
     c.fill=INPUT_FILL; c.alignment=Alignment(horizontal='left',vertical='center')
     c.font=Font(name='Arial',size=10,bold=True,color='FF000000')
-rg['K14']='← escriba el nombre   ·   o el correo →'
+rg['K14']='← elija el nombre de la lista   ·   o escriba el correo →'
 rg['AM14']=('=IF(TRIM($J$14&"")<>"",IFERROR(MATCH(TRIM($J$14),BD_EST_NOM,0),'
             'IFERROR(MATCH("*"&TRIM($J$14)&"*",BD_EST_NOM,0),"")),'
             'IF(TRIM($L$14&"")<>"",IFERROR(MATCH(TRIM($L$14),BD_EST_MAIL,0),'
@@ -205,6 +217,8 @@ v.promptTitle='Ingreso de fecha:'; v.prompt='Ingrese fecha DD/MM/AAAA, con núme
 dv(rg,'"%s"'%','.join(TIPOS),['M%d:M%d'%(FIRST,LAST)])
 dv(rg,'"%s"'%','.join(SEDES),['N%d:N%d'%(FIRST,LAST)])
 dv(rg,'"TODAS,%s"'%','.join(SEDES),['M2'])
+for ref,lista in (('J14','LISTA_EST'),('J15','LISTA_COL')):
+    v=dv(rg,lista,[ref]); v.showErrorMessage=False      # también acepta parte del nombre escrita a mano
 
 # ---- formato condicional ----
 rg.conditional_formatting=ConditionalFormattingList()
@@ -212,8 +226,12 @@ rg.conditional_formatting.add('I%d:I%d'%(FIRST,LAST),
     Rule(type='duplicateValues',dxf=DifferentialStyle(font=Font(bold=True,color='FF0000FF'))))
 rg.conditional_formatting.add('I%d:I%d'%(FIRST,LAST),
     CellIsRule(operator='equal',formula=['0'],font=Font(color='FFFFFFFF')))
-rg.conditional_formatting.add('E%d:T%d'%(FIRST,LAST),
-    FormulaRule(formula=['$J%d="INEXISTENTE"'%FIRST],fill=PatternFill('solid',fgColor='FFFFD9CC')))
+# inexistente: naranja del mismo tema Office (Énfasis 6, claro 40 %), y la palabra en negrita
+NARANJA=PatternFill('solid',fgColor='FFFAC090')
+rg.conditional_formatting.add('J%d:J%d'%(FIRST,LAST),
+    FormulaRule(formula=['$J%d="INEXISTENTE"'%FIRST],fill=NARANJA,font=Font(bold=True,color='FF984807')))
+rg.conditional_formatting.add('E%d:U%d'%(FIRST,LAST),
+    FormulaRule(formula=['$J%d="INEXISTENTE"'%FIRST],fill=NARANJA))
 from openpyxl.worksheet.views import SheetView, Pane, Selection
 _old=rg.sheet_view
 sv=SheetView(workbookViewId=0, zoomScale=_old.zoomScale or 80, zoomScaleNormal=_old.zoomScaleNormal or 80,
@@ -353,6 +371,8 @@ NAMES={
  'BD_COL_CC':COL('B'),'BD_COL_ID':COL('C'),'BD_COL_NOM':COL('D'),'BD_COL_COD':COL('I'),
  'BD_COL_PROG':COL('K'),'BD_COL_MAIL':COL('L'),'BD_COL_MAIL2':COL('M'),'BD_COL_TEL':COL('N'),
  'BD_COL_SEDE':COL('P'),
+ 'LISTA_EST':"'BD EST'!$C$2:INDEX('BD EST'!$C:$C,MATCH(REPT(\"z\",255),'BD EST'!$C:$C))",
+ 'LISTA_COL':"'BD ADM-DOC'!$D$2:INDEX('BD ADM-DOC'!$D:$D,MATCH(REPT(\"z\",255),'BD ADM-DOC'!$D:$D))",
  'REG_QPART':RG('A'),'REG_SEDE':RG('G'),'REG_PROG':RG('H'),'REG_TIPO':RG('P'),'REG_PRIM':RG('AA'),
  'REG_PROGEST':RG('AD'),'REG_IEST':RG('AE'),'REG_PROGPRO':RG('AG'),'REG_IPRO':RG('AH'),
  'REG_PROGADM':RG('AJ'),'REG_IADM':RG('AK')}
@@ -361,12 +381,12 @@ for n2,v2 in NAMES.items(): wb.defined_names.add(DefinedName(n2,attr_text=v2))
 wb.active=wb.sheetnames.index('Registros')
 for ws in wb.worksheets: ws.sheet_view.tabSelected = (ws.title=='Registros')
 wb.calculation.fullCalcOnLoad=True
-raw=SP+'/_v18_raw.xlsx'
+raw=SP+'/_v19_raw.xlsx'
 wb.save(raw)
 from sharedstr import trim_empty_cells
-trim=SP+'/_v18_trim.xlsx'
+trim=SP+'/_v19_trim.xlsx'
 print('limpiadas:',trim_empty_cells(raw,trim,{'BD EST','BD ADM-DOC'}))
-out=SP+'/Registro_Asistencia_2026-1_V18.xlsx'
+out=SP+'/Registro_Asistencia_2026-1_V19.xlsx'
 n,size=convert(trim,out)
 print('cadenas compartidas:',n,'| tamaño: %.1f MB'%(size/1048576))
 print('guardado:',out,'(%.0fs)'%(time.time()-t0))
