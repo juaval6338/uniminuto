@@ -3,73 +3,50 @@
 Libro para registrar la asistencia a las actividades de Bienestar. Se escribe la
 cédula o el ID del participante y el archivo trae sus datos desde las bases.
 
-- `libro/Registro_Asistencia_2026-1_V16.xlsx` — el libro listo para usar.
-- `herramientas/` — scripts que generan el libro y que leen el `.xlsb` original.
+- `libro/Registro_Asistencia_2026-1_V17.xlsx` — el libro listo para usar.
+- `herramientas/` — scripts que generan el libro (`build8.py`), el conversor de
+  cadenas compartidas (`sharedstr.py`) y los lectores del `.xlsb` original.
 
-## Hojas
+## Punto de partida
 
-| Hoja | Para qué |
-|---|---|
-| `Registros` | Registro diario, buscador por nombre y resumen de participación |
-| `Resultados por programa` | Cuántos participaron por programa académico y por área |
-| `Evaluación` | Captura de las encuestas de evaluación |
-| `Gráficos Evaluación` | Tabla y gráfica de los resultados de la encuesta |
-| `BD ADM-DOC` / `BD EST` | Bases de datos (se actualizan pegando el export encima) |
+La versión 17 se construye **sobre el archivo original V9**: mismas hojas en el
+mismo orden, mismos colores y fuentes, mismas letras de columna y la tabla con
+encabezados en la fila 18 y datos desde la fila 19. Solo cambian las fórmulas y lo
+que se pidió expresamente.
 
 ## Hoja Registros
 
-La tabla empieza en la fila 13 (encabezados) y tiene tres zonas:
+| Columnas | Quién la llena | Contenido |
+|---|---|---|
+| E, F | usted (sin relleno) | Fecha y documento (C.C. o ID) |
+| G – K | el archivo (gris) | Sede, Dependencia, ID, Apellidos y nombres, Correo institucional |
+| L – O | usted, solo si sale INEXISTENTE | Correo, Tipo, Sede, Dependencia |
+| P | el archivo | Tipo de participante: ESTUDIANTE, PROFESOR, ADMINISTRATIVO o EXTERNO |
+| Q | usted | Nombre de espacio y observaciones |
+| R – T | el archivo | Teléfono, teléfono adicional, correo adicional |
 
-- **A – K, automáticas.** Documento, SEDE, APELLIDOS Y NOMBRES, PROGRAMA / ÁREA,
-  CORREO INSTITUCIONAL, CORREO ADICIONAL, TELÉFONO, TELÉFONO ADICIONAL y
-  TIPO DE PARTICIPANTE. La columna de programa o área se llama DEPENDENCIA.
-- **L – O, manuales.** Solo se llenan cuando el nombre sale como `INEXISTENTE`
-  (la fila se pinta de naranja): correo, tipo, sede y programa.
-- **P – Q.** Actividad / espacio y observaciones.
+- Los códigos 1, 27 y 28 siguen en las bases; en Registros se muestran como texto.
+- ID repetido: la letra se pone en azul fuerte (regla de duplicados del original).
+- Persona que no está en la base: el nombre dice INEXISTENTE y la fila se pinta de
+  salmón; el correo que se escriba en L aparece en K.
+- El documento se reconoce aunque venga pegado como texto, con puntos o con
+  espacios (también el espacio invisible que traen las páginas web y Forms).
+- Buscador (filas 13 a 15): se escribe el nombre, o parte de él, en J14
+  (estudiantes) o J15 (colaboradores), o el correo en L14.
+- Resumen de participación arriba a la derecha (L1:P8) con filtro de sede en M2.
+- 2000 filas de registro (19 a 2018). Q-Part, Día y Mes van ocultas.
 
-El tipo de participante se muestra como texto en mayúscula —`ESTUDIANTE`,
-`PROFESOR`, `ADMINISTRATIVO`— traduciendo los códigos 1, 27 y 28 que siguen
-guardados tal cual en las bases.
+## Otras hojas
 
-Arriba hay dos bloques: el **buscador por nombre** (se escribe parte del nombre y
-se elige de una lista desplegable) y el **resumen de participación** con
-participantes, participaciones y porcentaje por tipo, con filtro de sede.
+- **Resultados por tipo**: eliminada; su cuadro está en Registros.
+- **Resultados por programa**: tres bloques horizontales (estudiantes,
+  profesores, administrativos) ordenados de mayor a menor.
+- **Evaluación**: la tabla de la derecha refleja también lo que se pega, y la
+  escala sigue el formato FR-BM-DFB-03 (E, N, A, N/M, N/A).
+- **Gráficos Evaluación**: una sola gráfica de barras en lugar de cuatro.
 
-## Colores
+## Mantenimiento
 
-| Color | Significado |
-|---|---|
-| Amarillo | lo escribe usted |
-| Blanco | lo calcula el archivo (no escribir) |
-| ID en azul fuerte | ese documento ya está registrado en otra fila |
-| Salmón en la fila | la persona no está en la base de datos |
-
-La columna `Q-Part` (el contador que alimenta el resumen) va oculta, igual que las
-columnas auxiliares T a AO.
-
-## Correos y teléfonos## Correos y teléfonos
-
-El correo que manda es el institucional (`@uniminuto.edu`). El correo adicional
-del estudiante sale de `C_ESTUDIANTE2`, tomando la parte anterior al `#`, y se
-deja en blanco si coincide con el institucional. El teléfono principal es
-`TEL_CEL` y el adicional el primero de `TEL_RE` / `TEL_TR` que sea distinto.
-
-En `BD ADM-DOC` las columnas de correo adicional y teléfono están vacías en las
-1.585 filas, así que profesores y administrativos no traen esos datos.
-
-## Evaluación
-
-Las preguntas y la escala siguen el formato institucional **FR-BM-DFB-03,
-Versión 1, Enero 28 de 2021**: `E` Excelente (4), `N` Notable (3), `A` Aceptable (2),
-`N/M` Necesita Mejoramiento (1) y `N/A` No aplica, que no promedia.
-
-## Mantenimiento## Mantenimiento
-
-Las bases conservan las columnas del export original, así que se siguen
-actualizando pegando encima: se pega bajo el encabezado de la fila 1 y todo lo
-demás se recalcula solo. Los rangos con nombre apuntan a **columnas completas**
-(`'BD EST'!$C:$C`), así que no hay ningún tope de filas: da igual cuántos
-estudiantes o colaboradores lleguen en cada periodo.
-
-El libro se guarda como `.xlsx`. Si se quiere el tamaño del `.xlsb` original,
-basta con *Archivo → Guardar como → Libro binario de Excel* dentro de Excel.
+Las bases conservan las columnas del export, así que se actualizan pegando encima
+bajo el encabezado de la fila 1. Las fórmulas apuntan a columnas completas, sin
+tope de filas.

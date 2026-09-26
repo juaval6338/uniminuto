@@ -56,3 +56,35 @@ def convert(src, dst):
         z.writestr('xl/sharedStrings.xml', out['xl/sharedStrings.xml'])
     zin.close()
     return len(table), os.path.getsize(dst)
+
+
+def trim_empty_cells(src, dst, sheet_names):
+    """Quita, en las hojas indicadas, las celdas vacías que solo llevan estilo y las filas
+    que quedan vacías. No cambia nada visible: esas celdas no tienen valor, relleno ni borde."""
+    zin = zipfile.ZipFile(src)
+    names = zin.namelist()
+    wbx = zin.read('xl/workbook.xml').decode('utf8')
+    rels = zin.read('xl/_rels/workbook.xml.rels').decode('utf8')
+    rid = {m.group(2): m.group(1) for m in re.finditer(r'<sheet [^>]*?name="([^"]+)"[^>]*?r:id="([^"]+)"', wbx)}
+    rid.update({m.group(2): m.group(1) for m in re.finditer(r'<sheet [^>]*?r:id="([^"]+)"[^>]*?name="([^"]+)"', wbx)})
+    target = {}
+    for m in re.finditer(r'<Relationship [^>]*?Id="([^"]+)"[^>]*?Target="([^"]+)"', rels):
+        target[m.group(1)] = m.group(2)
+    for m in re.finditer(r'<Relationship [^>]*?Target="([^"]+)"[^>]*?Id="([^"]+)"', rels):
+        target[m.group(2)] = m.group(1)
+    parts = set()
+    for r_id, nm in rid.items():
+        if nm in sheet_names:
+            t = target[r_id].lstrip('/')
+            parts.add(t if t.startswith('xl/') else 'xl/' + t)
+    empty_cell = re.compile(rb'<c r="[A-Z]+\d+"(?: s="\d+")?(?: t="n")?\s*/>')
+    empty_row = re.compile(rb'<row [^>]*?/>|<row [^>]*?>\s*</row>')
+    with zipfile.ZipFile(dst, 'w', zipfile.ZIP_DEFLATED, compresslevel=9) as z:
+        for n in names:
+            data = zin.read(n)
+            if n in parts:
+                data = empty_cell.sub(b'', data)
+                data = empty_row.sub(b'', data)
+            z.writestr(n, data)
+    zin.close()
+    return sorted(parts)
