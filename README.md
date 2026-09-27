@@ -3,7 +3,7 @@
 Libro para registrar la asistencia a las actividades de Bienestar. Se escribe la
 cédula o el ID del participante y el archivo trae sus datos desde las bases.
 
-- `libro/Registro_Asistencia_2026-1_V21.xlsx` — el libro listo para usar.
+- `libro/Registro_Asistencia_2026-1_V22.xlsx` — el libro listo para usar.
 - `herramientas/` — scripts que generan el libro (`build8.py`), las tablas
   dinámicas del buscador (`pivots.py`), el conversor de cadenas compartidas
   (`sharedstr.py`), el validador (`validar.py`) y los lectores del `.xlsb` original.
@@ -27,6 +27,8 @@ que se pidió expresamente.
 | R – U | el archivo | Teléfono, teléfono adicional, correo adicional, número de cédula |
 
 - Los códigos 1, 27 y 28 siguen en las bases; en Registros se muestran como texto.
+  Quien está en BD EST sale como ESTUDIANTE aunque su fila no traiga el código 1;
+  en colaboradores, si falta el código 27/28 se usa la columna J (DOC/ADM).
 - ID repetido: la letra se pone en azul fuerte (regla de duplicados del original).
 - Persona que no está en la base: el nombre dice INEXISTENTE en negrita y la fila
   se pinta de naranja (Énfasis 6 del tema Office, el mismo tema del archivo); el
@@ -57,8 +59,9 @@ que se pidió expresamente.
 ## Mantenimiento
 
 Las bases conservan las columnas del export, así que se actualizan pegando encima
-bajo el encabezado de la fila 1. Las fórmulas apuntan a columnas completas, sin
-tope de filas.
+bajo el encabezado de la fila 1, o agregando filas al final. Las fórmulas apuntan
+a columnas completas, sin tope de filas. La cédula y el ID se encuentran aunque
+vengan pegados como texto (también el ID con ceros a la izquierda).
 
 Después de alimentar las bases, **Datos → Actualizar todo** pone al día las
 listas del buscador (igual que en el original, no se actualizan solas al abrir).
@@ -76,5 +79,5 @@ mal escritas y dibujos vacíos. Se probó contra las versiones anteriores: detec
 el fallo de la V13 y el de la V17, y da por buena la V16, que abrió sin aviso.
 
 ```
-python3 herramientas/validar.py libro/Registro_Asistencia_2026-1_V21.xlsx
+python3 herramientas/validar.py libro/Registro_Asistencia_2026-1_V22.xlsx
 ```

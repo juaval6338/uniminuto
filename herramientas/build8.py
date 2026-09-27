@@ -116,9 +116,13 @@ for r in range(FIRST,LAST+1):
     rg['W%d'%r]=f('=IF(TRIM(SUBSTITUTE($F{r}&"",CHAR(160),""))="","",'
                   'IFERROR(--SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(TRIM($F{r}&""),'
                   'CHAR(160),"")," ",""),".",""),",",""),TRIM(SUBSTITUTE($F{r}&"",CHAR(160),""))))')
-    rg['X%d'%r]=f('=IF($W{r}="","",IFERROR(MATCH($W{r},BD_COL_CC,0),IFERROR(MATCH($W{r},BD_COL_ID,0),"")))')
+    # se busca como número y, si no aparece, como texto (filas pegadas desde un export;
+    # el ID de estudiante puede venir como texto con ceros a la izquierda)
+    rg['X%d'%r]=f('=IF($W{r}="","",IFERROR(MATCH($W{r},BD_COL_CC,0),IFERROR(MATCH($W{r}&"",BD_COL_CC,0),'
+                  'IFERROR(MATCH($W{r},BD_COL_ID,0),IFERROR(MATCH($W{r}&"",BD_COL_ID,0),"")))))')
     rg['Y%d'%r]=f('=IF(OR($W{r}="",$X{r}<>""),"",IFERROR(MATCH($W{r},BD_EST_DOC,0),'
-                  'IFERROR(MATCH($W{r},BD_EST_ID,0),"")))')
+                  'IFERROR(MATCH($W{r}&"",BD_EST_DOC,0),IFERROR(MATCH($W{r},BD_EST_ID,0),'
+                  'IFERROR(MATCH($W{r}&"",BD_EST_ID,0),IFERROR(MATCH(TEXT($W{r},"000000000"),BD_EST_ID,0),""))))))')
     rg['Z%d'%r]=f('=IF($W{r}="","",$W{r}&"")')
     rg['AA%d'%r]=f('=IF($Z{r}="","",IF(MATCH($Z{r},$Z${f}:$Z${l},0)=ROW()-{o},1,0))')
     rg['AB%d'%r]=f('=IF($W{r}="","",IF($Y{r}<>"",IFERROR(LEFT(INDEX(BD_EST_MAIL2,$Y{r})&"",'
@@ -136,9 +140,12 @@ for r in range(FIRST,LAST+1):
                   'IF(INDEX(BD_EST_MAIL,$Y{r})&""<>"",INDEX(BD_EST_MAIL,$Y{r})&"",TRIM($L{r}&"")),'
                   'IF($X{r}<>"",IF(INDEX(BD_COL_MAIL,$X{r})&""<>"",INDEX(BD_COL_MAIL,$X{r})&"",'
                   'TRIM($L{r}&"")),TRIM($L{r}&""))))')
-    rg['P%d'%r]=f('=IF($W{r}="","",IF($Y{r}<>"",IF(INDEX(BD_EST_COD,$Y{r})=1,"ESTUDIANTE",""),'
-                  'IF($X{r}<>"",IF(INDEX(BD_COL_COD,$X{r})=27,"PROFESOR",'
-                  'IF(INDEX(BD_COL_COD,$X{r})=28,"ADMINISTRATIVO","")),UPPER(TRIM($M{r}&"")))))')
+    # quien está en BD EST es estudiante aunque la fila nueva no traiga el código 1;
+    # en colaboradores, si falta el código 27/28 se usa la columna J (DOC/ADM)
+    rg['P%d'%r]=f('=IF($W{r}="","",IF($Y{r}<>"","ESTUDIANTE",'
+                  'IF($X{r}<>"",IF(OR(INDEX(BD_COL_COD,$X{r})&""="27",UPPER(TRIM(INDEX(BD_COL_DESC,$X{r})&""))="DOC"),"PROFESOR",'
+                  'IF(OR(INDEX(BD_COL_COD,$X{r})&""="28",UPPER(TRIM(INDEX(BD_COL_DESC,$X{r})&""))="ADM"),"ADMINISTRATIVO","")),'
+                  'UPPER(TRIM($M{r}&"")))))')
     rg['R%d'%r]=f('=IF($W{r}="","",IF($Y{r}<>"",INDEX(BD_EST_CEL,$Y{r})&"",'
                   'IF($X{r}<>"",INDEX(BD_COL_TEL,$X{r})&"","")))')
     rg['S%d'%r]=f('=IF(OR($W{r}="",$Y{r}=""),"",'
@@ -373,8 +380,8 @@ RG =lambda c:"Registros!${c}${f}:${c}${l}".format(c=c,f=FIRST,l=LAST)
 NAMES={
  'BD_EST_ID':EST('B'),'BD_EST_NOM':EST('C'),'BD_EST_SEDE':EST('G'),'BD_EST_PROG':EST('K'),
  'BD_EST_CEL':EST('V'),'BD_EST_TEL2':EST('W'),'BD_EST_TEL3':EST('X'),
- 'BD_EST_MAIL':EST('Y'),'BD_EST_MAIL2':EST('Z'),'BD_EST_DOC':EST('AB'),'BD_EST_COD':EST('AU'),
- 'BD_COL_CC':COL('B'),'BD_COL_ID':COL('C'),'BD_COL_NOM':COL('D'),'BD_COL_COD':COL('I'),
+ 'BD_EST_MAIL':EST('Y'),'BD_EST_MAIL2':EST('Z'),'BD_EST_DOC':EST('AB'),
+ 'BD_COL_CC':COL('B'),'BD_COL_ID':COL('C'),'BD_COL_NOM':COL('D'),'BD_COL_COD':COL('I'),'BD_COL_DESC':COL('J'),
  'BD_COL_PROG':COL('K'),'BD_COL_MAIL':COL('L'),'BD_COL_MAIL2':COL('M'),'BD_COL_TEL':COL('N'),
  'BD_COL_SEDE':COL('P'),
  'REG_QPART':RG('A'),'REG_SEDE':RG('G'),'REG_PROG':RG('H'),'REG_TIPO':RG('P'),'REG_PRIM':RG('AA'),
@@ -390,12 +397,12 @@ wb.calculation.fullCalcOnLoad=True
 from openpyxl.worksheet.protection import SheetProtection
 for ws in wb.worksheets: ws.protection=SheetProtection()
 wb.security=None
-raw=SP+'/_v21_raw.xlsx'
+raw=SP+'/_v22_raw.xlsx'
 wb.save(raw)
 from sharedstr import trim_empty_cells
-trim=SP+'/_v21_trim.xlsx'
+trim=SP+'/_v22_trim.xlsx'
 print('limpiadas:',trim_empty_cells(raw,trim,{'BD EST','BD ADM-DOC'}))
-conv=SP+'/_v21_conv.xlsx'
+conv=SP+'/_v22_conv.xlsx'
 n,size=convert(trim,conv)
 import pickle
 from pivots import add_pivots
@@ -403,7 +410,7 @@ _D=pickle.load(open(SP+'/data.pkl','rb'))
 _est=_D['est'][1:]
 _adm=[r for r in _D['adm'][1:] if any(v not in (None,'') for v in r)]
 nz=lambda v: None if v in (None,'') else str(v)
-out=SP+'/Registro_Asistencia_2026-1_V21.xlsx'
+out=SP+'/Registro_Asistencia_2026-1_V22.xlsx'
 add_pivots(conv,out,'Registros',[
   dict(name='TablaDinamica1',location='I16',caption='Estudiante',field='APELLIDOS_NOMBRES',
        source=('BD EST','C1:C1048576'),values=[nz(r[2]) for r in _est]),
