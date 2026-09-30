@@ -3,10 +3,12 @@
 Libro para registrar la asistencia a las actividades de Bienestar. Se escribe la
 cédula o el ID del participante y el archivo trae sus datos desde las bases.
 
-- `libro/Registro_Asistencia_2026-1_V22.xlsx` — el libro listo para usar.
-- `herramientas/` — scripts que generan el libro (`build8.py`), las tablas
+- `libro/Registro_Asistencia_2026-1_V23.xlsx` — el libro listo para usar.
+- `herramientas/` — scripts que generan el libro (`build9.py`), las tablas
   dinámicas del buscador (`pivots.py`), el conversor de cadenas compartidas
-  (`sharedstr.py`), el validador (`validar.py`) y los lectores del `.xlsb` original.
+  (`sharedstr.py`), las fórmulas compartidas (`sharedfml.py`), el validador
+  (`validar.py`), los lectores del `.xlsb` original y las pruebas con LibreOffice
+  (`pruebas/`).
 
 ## Punto de partida
 
@@ -26,6 +28,10 @@ que se pidió expresamente.
 | Q | usted | Nombre de espacio y observaciones |
 | R – U | el archivo | Teléfono, teléfono adicional, correo adicional, número de cédula |
 
+- Participantes: una persona cuenta una sola vez aunque en una fila se escriba su
+  cédula y en otra su ID. Solo cuentan las filas completas (fecha y documento),
+  igual que las participaciones. En los datos de ejemplo había 29 personas
+  escritas de las dos formas: eran 93 participantes, no 121.
 - Los códigos 1, 27 y 28 siguen en las bases; en Registros se muestran como texto.
   Quien está en BD EST sale como ESTUDIANTE aunque su fila no traiga el código 1;
   en colaboradores, si falta el código 27/28 se usa la columna J (DOC/ADM).
@@ -44,14 +50,16 @@ que se pidió expresamente.
   `'BD ADM-DOC'!D:D`). Al elegir un nombre, E14:H15 muestran sede, ID,
   dependencia y cédula.
 - Resumen de participación arriba a la derecha (L1:P8) con filtro de sede en M2.
-- 2000 filas de registro (19 a 2018). Q-Part, Día y Mes van ocultas.
+  El original ocultaba las filas 1 a 6; ahora se ven para que el cuadro aparezca.
+- 10.000 filas de registro (19 a 10018). Q-Part, Día y Mes van ocultas.
 - Los encabezados quedan inmovilizados hasta la fila 18, como en el original.
 
 ## Otras hojas
 
 - **Resultados por tipo**: eliminada; su cuadro está en Registros.
 - **Resultados por programa**: tres bloques horizontales (estudiantes,
-  profesores, administrativos) ordenados de mayor a menor.
+  profesores, administrativos) ordenados de mayor a menor, con 100 filas por
+  bloque (las bases tienen 66, 58 y 70 dependencias; antes cabían 30).
 - **Evaluación**: la tabla de la derecha refleja también lo que se pega, y la
   escala sigue el formato FR-BM-DFB-03 (E, N, A, N/M, N/A).
 - **Gráficos Evaluación**: una sola gráfica de barras en lugar de cuatro.
@@ -63,11 +71,22 @@ bajo el encabezado de la fila 1, o agregando filas al final. Las fórmulas apunt
 a columnas completas, sin tope de filas. La cédula y el ID se encuentran aunque
 vengan pegados como texto (también el ID con ceros a la izquierda).
 
-Después de alimentar las bases, **Datos → Actualizar todo** pone al día las
-listas del buscador (igual que en el original, no se actualizan solas al abrir).
+## Protección
 
-Ninguna hoja está protegida. El original protegía cuatro hojas sin contraseña,
-y eso impedía actualizar las tablas dinámicas y pegar en celdas bloqueadas.
+Registros, Resultados por programa, Evaluación y Gráficos Evaluación están
+protegidas **sin contraseña**, con las mismas opciones del original (se puede usar
+el autofiltro y el filtro de las tablas dinámicas). Solo quedan libres:
+
+- Registros: E (fecha), F (C.C. o ID), L a O (datos del INEXISTENTE),
+  Q (observaciones), H8:K8 (nombre de la actividad) y M2 (sede del resumen).
+- Evaluación: B10:K509 (respuestas).
+
+Las bases (BD EST y BD ADM-DOC) no están protegidas: se alimentan pegando.
+
+Las tablas dinámicas no se pueden actualizar con la hoja protegida. Después de
+alimentar las bases: **Revisar → Desproteger hoja** (en Registros), **Datos →
+Actualizar todo**, y **Revisar → Proteger hoja** marcando «Usar Autofiltro» y
+«Usar tabla dinámica y gráfico dinámico».
 
 ## Validación antes de entregar
 
@@ -79,5 +98,24 @@ mal escritas y dibujos vacíos. Se probó contra las versiones anteriores: detec
 el fallo de la V13 y el de la V17, y da por buena la V16, que abrió sin aviso.
 
 ```
-python3 herramientas/validar.py libro/Registro_Asistencia_2026-1_V22.xlsx
+python3 herramientas/validar.py libro/Registro_Asistencia_2026-1_V23.xlsx
 ```
+
+Las fórmulas que se repiten fila a fila se guardan como fórmulas compartidas de
+Excel (`sharedfml.py`): una columna se comparte solo si cada fila es exactamente
+la fórmula de la primera fila desplazada. Así el libro de 10.000 filas pesa lo
+mismo que el de 2.000 (8,8 MB).
+
+## Pruebas con LibreOffice
+
+Con LibreOffice escuchando en el puerto 2085
+(`soffice --headless --accept="socket,host=localhost,port=2085;urp;"`):
+
+- `pruebas/prueba_registros.py LIBRO CASOS.json`: escribe cédulas e ID tecleando,
+  pegando desde otro libro (texto con puntos, espacios invisibles o ceros a la
+  izquierda) y con pegado especial de valores. Compara cada fila con la base y
+  recalcula por su cuenta el resumen y Resultados por programa (todas las sedes,
+  CIN y BUG). En la V23 salieron bien las 15 filas y todos los conteos.
+- `pruebas/tablas_dinamicas.py LIBRO` y `pruebas/prueba_buscador.py LIBRO`:
+  cargan las tablas dinámicas y prueban el buscador (en una copia sin
+  protección, porque LibreOffice no las carga en hojas protegidas).

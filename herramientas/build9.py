@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""V17: parte del archivo original (V9) y solo cambia el funcionamiento."""
+"""V23: parte del archivo original (V9); 10.000 filas de registro y hojas protegidas sin contraseña."""
 import sys, time
 from copy import copy
 SP='/tmp/claude-0/-home-user-uniminuto/b364fe32-f339-5501-a525-09b94e80e92f/scratchpad'
@@ -22,7 +22,7 @@ t0=time.time()
 wb=load_workbook(SP+'/orig/original.xlsx')
 print('cargado en %.0fs'%(time.time()-t0))
 
-FIRST, LAST = 19, 2018           # 2000 filas de registro
+FIRST, LAST = 19, 10018          # 10.000 filas de registro
 # filas totalmente vacías dentro de BD ADM-DOC: se quitan para que la lista no muestre blancos
 _adm=wb['BD ADM-DOC']
 _last=max(r for r in range(2,_adm.max_row+1) if any(_adm.cell(row=r,column=c).value not in (None,'') for c in range(1,17)))
@@ -54,11 +54,15 @@ ST_BUS_HDR = copy(rg['E13']._style)   # encabezado del buscador
 ST_BUS_VAL = copy(rg['E14']._style)   # valor gris del buscador
 ST_BUS_TIT = copy(rg['E12']._style)   # título del buscador
 
-# filas 2001..2018 heredan el estilo de la fila 2000
+# filas 2001..LAST heredan el estilo de la fila 2000; el original ocultaba las filas
+# 2001..3000 y todo lo que no está definido (zeroHeight): se hacen visibles hasta LAST
 for r in range(2001, LAST+1):
     rg.row_dimensions[r].height = rg.row_dimensions[2000].height
+    rg.row_dimensions[r].hidden = False
     for c in range(1,19):
         cp(rg.cell(row=r,column=c), rg.cell(row=2000,column=c))
+for r in range(LAST+1, rg.max_row+1):
+    for c in range(1,41): rg.cell(row=r,column=c).value=None
 # limpiar fórmulas viejas y columnas auxiliares
 for r in range(FIRST, rg.max_row+1):
     for c in (1,2,3,7,8,9,10,11,16,18) + tuple(range(19,41)):
@@ -123,7 +127,10 @@ for r in range(FIRST,LAST+1):
     rg['Y%d'%r]=f('=IF(OR($W{r}="",$X{r}<>""),"",IFERROR(MATCH($W{r},BD_EST_DOC,0),'
                   'IFERROR(MATCH($W{r}&"",BD_EST_DOC,0),IFERROR(MATCH($W{r},BD_EST_ID,0),'
                   'IFERROR(MATCH($W{r}&"",BD_EST_ID,0),IFERROR(MATCH(TEXT($W{r},"000000000"),BD_EST_ID,0),""))))))')
-    rg['Z%d'%r]=f('=IF($W{r}="","",$W{r}&"")')
+    # clave de la persona: la misma si una vez se escribe la cédula y otra el ID
+    # (solo filas completas, con fecha y documento, igual que las participaciones de la columna A)
+    rg['Z%d'%r]=f('=IF(OR($W{r}="",$E{r}=""),"",IF($Y{r}<>"","E"&INDEX(BD_EST_ID,$Y{r}),'
+                  'IF($X{r}<>"","C"&INDEX(BD_COL_ID,$X{r}),$W{r}&"")))')
     rg['AA%d'%r]=f('=IF($Z{r}="","",IF(MATCH($Z{r},$Z${f}:$Z${l},0)=ROW()-{o},1,0))')
     rg['AB%d'%r]=f('=IF($W{r}="","",IF($Y{r}<>"",IFERROR(LEFT(INDEX(BD_EST_MAIL2,$Y{r})&"",'
                    'FIND("#",INDEX(BD_EST_MAIL2,$Y{r})&"")-1),INDEX(BD_EST_MAIL2,$Y{r})&""),'
@@ -216,6 +223,9 @@ for c in 'LMNOP': cp(rg[c+'8'], rg['E13'])
 rg['L8']='TOTAL'; rg['L8'].alignment=Alignment(horizontal='left',vertical='center')
 rg['M8']='=SUM(M4:M7)'; rg['N8']='=IF($M$8=0,"",SUM(N4:N7))'
 rg['O8']='=SUM(O4:O7)'; rg['P8']='=IF($O$8=0,"",SUM(P4:P7))'
+# el original ocultaba las filas 1 a 6 y dejaba la 7 de 6 pt: el cuadro no se veía
+for r in range(1,8):
+    rg.row_dimensions[r].hidden=False; rg.row_dimensions[r].height=15
 for r in range(4,9):
     rg['N%d'%r].number_format=ST_PCT; rg['P%d'%r].number_format=ST_PCT
     rg['M%d'%r].number_format='#,##0'; rg['O%d'%r].number_format='#,##0'
@@ -263,9 +273,15 @@ rp['B3']='Sede (se elige en Registros):'
 rp['D3']='=Registros!$M$2'
 rp['F5']='PROFESORES PARTICIPANTES'
 for c in ('B7','F7','J7'): rp[c]='Dependencia'
-H0,H1,TOT = 8,37,38
+H0,H1,TOT = 8,107,108            # 100 dependencias por bloque (hay 66, 58 y 70 en las bases)
 for r in range(H0,TOT+1):
     for c in range(14,26): rp.cell(row=r,column=c).value=None
+_tot=[copy(rp.cell(row=38,column=c)._style) for c in range(1,14)]   # estilo de la fila Total
+for r in range(38,TOT+1):         # filas nuevas con el estilo de una fila de datos
+    rp.row_dimensions[r].height=rp.row_dimensions[37].height
+    for c in range(1,14):
+        cp(rp.cell(row=r,column=c), rp.cell(row=37,column=c)); rp.cell(row=r,column=c).value=None
+for c in range(1,14): rp.cell(row=TOT,column=c)._style=copy(_tot[c-1])   # la fila Total baja a TOT
 def bloque(cini,tipo,pn,ix,aux):
     c0,c1,c2=CL(cini),CL(cini+1),CL(cini+2)
     ap,ac,ak,ao=aux
@@ -392,26 +408,62 @@ for n2,v2 in NAMES.items(): wb.defined_names.add(DefinedName(n2,attr_text=v2))
 wb.active=wb.sheetnames.index('Registros')
 for ws in wb.worksheets: ws.sheet_view.tabSelected = (ws.title=='Registros')
 wb.calculation.fullCalcOnLoad=True
-# Sin protección (el original la tenía sin contraseña): bloquea las tablas
-# dinámicas del buscador y el pegado en celdas bloqueadas.
+# ============================ PROTECCIÓN (sin contraseña, como el original) ============================
+# Solo quedan libres las casillas donde se escribe; las fórmulas quedan bloqueadas.
+from openpyxl.styles import Protection
 from openpyxl.worksheet.protection import SheetProtection
-for ws in wb.worksheets: ws.protection=SheetProtection()
+LIBRE, BLOQ = Protection(locked=False), Protection(locked=True)
+def proteger_celdas(ws, libre):
+    for (r,c),cell in ws._cells.items():
+        quiero = not libre(r,c)
+        if cell.protection.locked != quiero: cell.protection = BLOQ if quiero else LIBRE
+ENTRADA = {5,6,12,13,14,15,17}          # E fecha, F C.C./ID, L..O datos del inexistente, Q observaciones
+for r in range(FIRST,LAST+1):
+    for c in ENTRADA: rg.cell(row=r,column=c)
+proteger_celdas(rg, lambda r,c: (FIRST<=r<=LAST and c in ENTRADA)
+                                or (r==8 and 8<=c<=11)      # H8:K8 nombre de la actividad
+                                or (r==2 and c==13))        # M2 filtro de sede del resumen
+proteger_celdas(ev, lambda r,c: E0<=r<=E1 and 2<=c<=11)     # B10:K509 respuestas de la evaluación
+proteger_celdas(rp, lambda r,c: False)
+proteger_celdas(gr, lambda r,c: False)
+# mismas opciones que tenía cada hoja en el original (tabla dinámica y autofiltro permitidos)
+rg.protection=SheetProtection(sheet=True, formatCells=False, formatColumns=False, formatRows=False,
+                              sort=False, autoFilter=False, pivotTables=False)
+rp.protection=SheetProtection(sheet=True, formatCells=False, formatColumns=False, formatRows=False)
+ev.protection=SheetProtection(sheet=True, formatCells=False, formatColumns=False, formatRows=False,
+                              insertRows=False, sort=False, autoFilter=False, pivotTables=False)
+gr.protection=SheetProtection(sheet=True, formatCells=False, formatColumns=False, formatRows=False,
+                              autoFilter=False, pivotTables=False)
+for n in ('BD EST','BD ADM-DOC'): wb[n].protection=SheetProtection()   # las bases se alimentan: sin protección
 wb.security=None
-raw=SP+'/_v22_raw.xlsx'
+print('protección lista (%.0fs)'%(time.time()-t0))
+raw=SP+'/_v23_raw.xlsx'
 wb.save(raw)
 from sharedstr import trim_empty_cells
-trim=SP+'/_v22_trim.xlsx'
+trim=SP+'/_v23_trim.xlsx'
 print('limpiadas:',trim_empty_cells(raw,trim,{'BD EST','BD ADM-DOC'}))
-conv=SP+'/_v22_conv.xlsx'
+conv=SP+'/_v23_conv.xlsx'
 n,size=convert(trim,conv)
+# fórmulas repetidas fila a fila -> fórmulas compartidas (archivo más liviano y rápido de abrir)
+import zipfile, re as _re
+from sharedfml import compartir
+_z=zipfile.ZipFile(conv); _wbx=_z.read('xl/workbook.xml').decode(); _rels=_z.read('xl/_rels/workbook.xml.rels').decode(); _z.close()
+def _parte(nombre):
+    rid=_re.search(r'<sheet [^>]*name="%s"[^>]*r:id="([^"]+)"'%_re.escape(nombre),_wbx).group(1)
+    t=(_re.search(r'<Relationship [^>]*Target="([^"]+)"[^>]*Id="%s"'%rid,_rels) or
+       _re.search(r'<Relationship [^>]*Id="%s"[^>]*Target="([^"]+)"'%rid,_rels)).group(1)
+    return 'xl/'+t.lstrip('/').replace('xl/','',1)
+shr=SP+'/_v23_shared.xlsx'
+for parte,grupos,celdas in compartir(conv,shr,{_parte(x) for x in ('Registros','Resultados por programa','Evaluación')}):
+    print('compartidas:',parte,grupos,'grupos,',celdas,'celdas')
 import pickle
 from pivots import add_pivots
 _D=pickle.load(open(SP+'/data.pkl','rb'))
 _est=_D['est'][1:]
 _adm=[r for r in _D['adm'][1:] if any(v not in (None,'') for v in r)]
 nz=lambda v: None if v in (None,'') else str(v)
-out=SP+'/Registro_Asistencia_2026-1_V22.xlsx'
-add_pivots(conv,out,'Registros',[
+out=SP+'/Registro_Asistencia_2026-1_V23.xlsx'
+add_pivots(shr,out,'Registros',[
   dict(name='TablaDinamica1',location='I16',caption='Estudiante',field='APELLIDOS_NOMBRES',
        source=('BD EST','C1:C1048576'),values=[nz(r[2]) for r in _est]),
   dict(name='TablaDinamica2',location='I17',caption='Colaborador',field='Apellidos y Nombres',
